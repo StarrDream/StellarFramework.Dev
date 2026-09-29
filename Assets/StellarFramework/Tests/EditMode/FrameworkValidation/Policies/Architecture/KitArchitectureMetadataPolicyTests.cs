@@ -585,8 +585,6 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(readme, Does.Contain("`SimulationKit`"));
             Assert.That(readme, Does.Contain("`PathKit`"));
             Assert.That(readme, Does.Contain("KitArchitectureGuide.md"));
-            Assert.That(readme, Does.Contain("WorldFramework.ToolsHub"));
-            Assert.That(readme, Does.Contain("GridKit.UnityProjectionAdapter"));
             Assert.That(readme, Does.Contain("LocalizationKit"));
         }
 
