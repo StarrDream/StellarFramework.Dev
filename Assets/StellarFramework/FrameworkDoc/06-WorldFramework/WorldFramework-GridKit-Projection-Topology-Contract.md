@@ -1,6 +1,6 @@
 # World Framework — GridKit Projection & Topology Contract
 
-> Status: Stable contract  
+> Status: Stable contract
 > Scope: preserve current GridKit V1 APIs while defining the additive topology capability and the independent Terrain/Mesh -> Grid workflow.
 
 ---
@@ -553,4 +553,3 @@ The stable contract is:
 - manual traversal overrides are separate from auto bake;
 - PathKit.Core remains generic and unchanged;
 - World Framework is not required for this workflow.
-

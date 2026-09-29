@@ -154,4 +154,3 @@ ToolsHub Profile 覆盖通用配置。高级项目仍可以：
 - Preview 超过 candidate safety limit
 
 先修配置，再重新 Validate / Compile。
-

@@ -1,6 +1,6 @@
 # StellarFramework World Framework — Core API Contracts
 
-> Status: Stable contract  
+> Status: Stable contract
 > Purpose: define the stable public API shape and compatibility boundaries for Runtime implementations.
 
 This document intentionally freezes **boundaries and semantics**, not every internal data structure.
@@ -1068,4 +1068,3 @@ The first existing-Foundation boundary test is already present:
 `WorldFrameworkFoundationBoundaryTests`.
 
 Tests for new assemblies become executable only after those assemblies are created.
-
