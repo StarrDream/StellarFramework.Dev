@@ -22,3 +22,16 @@ The target `.git` directories are preserved. All other target content is replace
 
 After target-specific compile / consumer gates pass, rerun with `--validation PASS` before the release commit.
 
+## Static release validation
+
+Validate a generated General / Extensions pair with:
+
+```text
+python Tools/RepositoryPublisher/validate_release_tree.py ^
+  --general-root <general-staging> ^
+  --extensions-root <extensions-staging> ^
+  --source-commit <dev-sha>
+```
+
+For a composed consumer tree (General plus Extensions overlay), add `--composed-root`. The validator rejects unresolved local `StellarFramework.*` asmdef references, missing Unity `.meta` files, extension assemblies in General, maintainer-only payload leakage, and standalone Unity-project metadata in Extensions.
+

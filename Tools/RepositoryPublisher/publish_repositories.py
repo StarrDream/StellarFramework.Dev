@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 import os
+import posixpath
 import shutil
 import subprocess
 import sys
@@ -229,10 +230,25 @@ def collect_plan(source_root: Path, base: dict, release: dict, product: str) -> 
 
 def collect_files(source_root: Path, plan: ProductPlan) -> Tuple[str, ...]:
     all_files = tracked_files(source_root)
+    all_file_set = set(all_files)
     selected: Set[str] = set()
     for root in plan.include_roots:
         add_root_and_meta(selected, all_files, root)
     selected = {path for path in selected if not is_excluded(path, plan.exclude_roots)}
+
+    # Unity serializes folder GUIDs in .meta files too. A profile may start below
+    # Assets/StellarFramework, so copying only the selected root's own .meta file
+    # is insufficient: every ancestor folder between the asset and Assets must
+    # retain its original GUID as well.
+    ancestor_meta: Set[str] = set()
+    for path in tuple(selected):
+        parent = posixpath.dirname(norm(path))
+        while parent and parent != "Assets":
+            meta_path = parent + ".meta"
+            if meta_path in all_file_set and not is_excluded(meta_path, plan.exclude_roots):
+                ancestor_meta.add(meta_path)
+            parent = posixpath.dirname(parent)
+    selected.update(ancestor_meta)
     return tuple(sorted(selected))
 
 
@@ -394,11 +410,13 @@ def dry_run_summary(source_root: Path, base: dict, release: dict) -> dict:
     general_files = collect_files(source_root, general)
     extension_files = collect_files(source_root, extensions)
     overlap = sorted(set(general_files) & set(extension_files))
-    allowed_overlap = {
+    allowed_shared_files = {
         "Assets/StellarFramework/KitCatalog/RepositoryReleaseCatalog.json",
-        "Assets/StellarFramework/KitCatalog/RepositoryReleaseCatalog.json.meta",
     }
-    unexpected_overlap = sorted(set(overlap) - allowed_overlap)
+    unexpected_overlap = sorted(
+        path for path in overlap
+        if not path.endswith(".meta") and path not in allowed_shared_files
+    )
     if unexpected_overlap:
         raise ReleaseError(f"General/Extensions source overlap is not allowed: {unexpected_overlap[:20]}")
     return {
