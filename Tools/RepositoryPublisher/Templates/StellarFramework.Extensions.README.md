@@ -4,7 +4,7 @@ StellarFramework 的高级扩展发布仓。
 
 > 本仓不是独立 Unity 工程，也不是第二个研发母仓。它必须与 `StarrDream/StellarFramework` 的 General Contract 组合使用；正式修改只进入 `StarrDream/StellarFramework.Dev`。
 
-当前发布版本：`{{RELEASE_VERSION}}`  
+当前发布版本：`{{RELEASE_VERSION}}`
 来源：`StellarFramework.Dev@{{SOURCE_COMMIT}}`
 
 ## 扩展域
@@ -49,4 +49,3 @@ Extension Runtime ---> General Public Contract
 ## 开发与反馈
 
 本仓只接收由 Dev Publisher 生成的发布提交。发现问题时应在 `StarrDream/StellarFramework.Dev` 修复并重新发布，避免三仓漂移。
-
