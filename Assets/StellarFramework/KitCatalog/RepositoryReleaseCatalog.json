@@ -67,14 +67,15 @@
       "Assets/StellarFramework/Samples/ArchitectureDemo",
       "Assets/StellarFramework/Samples/README.md",
       "Assets/StellarFrameworkBootstrap",
-      "ProjectSettings/EditorBuildSettings.asset",
-      "ProjectSettings/ProjectVersion.txt"
+      "ProjectSettings"
     ],
     "excludePaths": [
       "Assets/StellarFramework/Editor/StellarToolsHub/Modules/DevTools",
       "Assets/StellarFramework/Editor/Verification",
       "Assets/StellarFramework/FrameworkDoc/04-ToolsHub/WorldFramework",
-      "Assets/StellarFramework/FrameworkDoc/09-Development"
+      "Assets/StellarFramework/FrameworkDoc/09-Development",
+      "ProjectSettings/HybridCLRSettings.asset",
+      "ProjectSettings/Packages"
     ]
   },
   "extensions": {

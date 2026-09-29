@@ -4,7 +4,7 @@ A modular, exportable, production-oriented Unity framework for general project i
 
 > This repository is the **General user release**. Framework development happens only in `StarrDream/StellarFramework.Dev`. Advanced Algorithms, World, Flow and HybridCLR hot-update capabilities are released from `StarrDream/StellarFramework.Extensions`.
 
-Release: `{{RELEASE_VERSION}}`  
+Release: `{{RELEASE_VERSION}}`
 Source: `StellarFramework.Dev@{{SOURCE_COMMIT}}`
 
 ## General capabilities
@@ -52,4 +52,3 @@ StellarFramework.Dev              single development source of truth
 ```
 
 Fixes and features must land in Dev first and are then republished after validation.
-

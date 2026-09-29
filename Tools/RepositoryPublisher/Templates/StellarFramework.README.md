@@ -4,7 +4,7 @@
 
 > 本仓库是 **General 用户发布仓**。正式研发只在 `StarrDream/StellarFramework.Dev` 进行；高级算法、World、Flow 与 HybridCLR 热更新能力发布在 `StarrDream/StellarFramework.Extensions`。
 
-当前发布版本：`{{RELEASE_VERSION}}`  
+当前发布版本：`{{RELEASE_VERSION}}`
 来源：`StellarFramework.Dev@{{SOURCE_COMMIT}}`
 
 ## 适合直接使用的能力
@@ -58,4 +58,3 @@ StellarFramework.Dev              唯一研发源
 ```
 
 Bug 与功能修改应先进入 Dev，通过验证后再重新发布到用户仓。
-
