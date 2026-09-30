@@ -22,9 +22,9 @@
 ## 发布准备状态
 
 - 临时 E2E 菜单脚手架和生成的 Consumer 中间文件已清理；无关 EditorSettings 已恢复。
-- RepositoryPublisher 在前一轮从 Dev 生成 General（52 个 Profile）与 Extensions（32 个 Profile）；本轮最终发布树将在 Dev 变更提交后重新生成并校验。
-- 前一轮合并后的 Consumer 在 Unity 2022.3.62f3c1 首次导入成功、C# 编译错误为 0；本轮会对最终提交重新生成的树执行干净导入。
-- 当前任务目标是完成三仓本地提交与最终验证，随后即可推送；远端推送尚未执行。
+- RepositoryPublisher 已从本轮 Dev 收尾提交生成 General（52 个 Profile）与 Extensions（32 个 Profile）；两仓及组合树的 Release Tree 静态校验均 PASS。最终 `validation: PASS` 清单会在所有门禁结束后写入。
+- 组合 Consumer `Temp/RepositoryPublisher/Composed-627d288` 使用无 Library 缓存的新项目，在 Unity 2022.3.62f3c1 完成首次导入和脚本编译；111 个 DLL 产出，C# 编译错误 0、警告 0，Batch Mode 正常退出。
+- 三仓最终本地提交和发布清单收尾后即可推送；远端推送尚未执行。
 
 ### 2026-09-30 鈥?Android 热更 Gate 最终复验
 
