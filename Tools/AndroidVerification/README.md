@@ -2,9 +2,26 @@
 
 Dedicated Android emulator automation for StellarFramework release validation.
 
-## Local environment
+## First-time setup
 
-- SDK root: `C:\Android\Sdk`
+1. Install Unity **2022.3.62f3c1** with the **Android Build Support**, **Android SDK & NDK Tools**, and **OpenJDK** modules. Unity uses its bundled SDK/JDK to build the APK.
+2. Install Android command-line tools and an Android Emulator SDK into a separate SDK root. The scripts default to `C:\Android\Sdk`; override it for the current PowerShell session with `$env:STELLAR_ANDROID_SDK_ROOT = 'D:\Android\Sdk'`.
+3. In SDK Manager, install `platform-tools`, `emulator`, `platforms;android-35`, `system-images;android-35;google_apis;x86_64`, and `build-tools;35.0.0`. The API 35 build-tools package provides `aapt` for reading APK metadata.
+4. Create an AVD named `StellarFramework_API35` using the `android-35;google_apis;x86_64` image. The included launcher addresses this AVD by name, so other connected devices are left alone.
+5. Enable CPU virtualization in firmware and the Windows Hypervisor Platform feature, then restart Windows if the feature installer requests it. The standard environment check requires hardware acceleration; software CPU emulation is too slow and is not the normal release-gate configuration.
+6. Run the environment check below. It verifies `adb`, `emulator`, `aapt`, the AVD, and emulator acceleration before running a release test.
+
+For example, when `avdmanager` is on PATH and `ANDROID_SDK_ROOT` points at the SDK:
+
+```powershell
+avdmanager create avd -n StellarFramework_API35 -k "system-images;android-35;google_apis;x86_64" -d pixel_2
+```
+
+Open the resulting AVD configuration and set its RAM to **4096 MB** for the HotUpdate Release profile. A smaller device is sufficient for the ordinary APK smoke profile.
+
+## Expected local configuration
+
+- Default SDK root: `C:\Android\Sdk` (or `STELLAR_ANDROID_SDK_ROOT`)
 - AVD: `StellarFramework_API35`
 - Image: Android 15 / API 35 / Google APIs / x86_64
 - Acceleration: Windows Hypervisor Platform (WHPX)

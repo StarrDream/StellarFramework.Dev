@@ -1,80 +1,88 @@
 # StellarFramework.Dev
 
-StellarFramework 的完整研发母仓与唯一 Source of Truth。
+**本仓只面向框架开发者和维护者。** 这里包含完整 Unity 研发工程，是所有用户发布仓的唯一源码来源。只想使用框架的开发者请从 [General 用户仓](https://github.com/StarrDream/StellarFramework) 开始；需要 Algorithms、World、Flow 或 HotUpdate 时再添加 [Extensions](https://github.com/StarrDream/StellarFramework.Extensions)。
 
-> 面向使用者的发布仓是 `StarrDream/StellarFramework` 与 `StarrDream/StellarFramework.Extensions`。不要在两个用户仓平行开发功能；修复和新能力必须先进入本仓，通过验证后再发布。
+## 三仓分工
 
-## 仓库职责
+| 仓库 | 面向谁 | 用来做什么 |
+| --- | --- | --- |
+| StellarFramework.Dev | 框架维护者 | 修改 Runtime / Editor / Tools Hub，运行完整验证，生成两个用户发布仓 |
+| StellarFramework | Unity 使用者 | 打开完整 General 工程、运行入门 Demo、按需导出一个或多个通用 Kit |
+| StellarFramework.Extensions | Unity 使用者 | 添加 Algorithms / World / Flow / HotUpdate 扩展；依赖匹配版本的 General |
 
-本仓保留完整 Runtime / Editor / ToolsHub / Export / Samples / Tests / FrameworkVerification / Android Verification / HotUpdate Publisher / Development Plans。
+**功能只在 Dev 开发和修复。发布仓由 Dev Publisher 生成，不接受平行功能开发。**
 
-```text
-StellarFramework.Dev
-        |\
-        | \----> StellarFramework.Extensions   Algorithms / World / Flow / HotUpdate
-        |
-        +------> StellarFramework              General user release
-```
+## 打开研发工程
 
-发布边界由以下两个机器可读 Catalog 共同决定：
+1. 使用 Unity Hub 安装 **Unity 2022.3.62f3c1**。
+2. 在 Unity Hub 中通过 **Add → Add project from disk** 选择本仓目录。
+3. 等待导入和 Package Manager 完成；打开 **StellarFramework → Tools Hub → Start Here → Quick Start**。
+4. 运行 ArchitectureDemo，确认自己的 Unity 环境可正常打开项目后再开始改动。
 
-- `Assets/StellarFramework/KitCatalog/KitDistributionCatalog.json`：Kit、依赖、导出事实源。
-- `Assets/StellarFramework/KitCatalog/RepositoryReleaseCatalog.json`：General / Extensions 域归属。
+开发工程覆盖全部 Kit 源码、Tools Hub、分发 Catalog、Samples、Tests 和维护者验证工具。不要把 General / Extensions 的发布目录复制回 Dev，也不要在多个仓库维护同一份功能代码。
 
-双仓输出由 `Tools/RepositoryPublisher/publish_repositories.py` 生成，支持 Dry Run、依赖边界检查和 Release Manifest。
+## 研发时去哪里找
 
-## 开发原则
+- Runtime Kit：`Assets/StellarFramework/Runtime/Kits`。
+- Editor 与 Tools Hub：`Assets/StellarFramework/Editor`。
+- 用户用法文档：`Assets/StellarFramework/FrameworkDoc/02-Kits`。
+- Tools Hub 文档：`Assets/StellarFramework/FrameworkDoc/04-ToolsHub`。
+- 用户入门 Demo：`Assets/StellarFramework/Samples/ArchitectureDemo`。
+- 自动化回归：`Assets/StellarFramework/Tests`。
+- 发布前验证：`Assets/StellarFrameworkVerification` 与 `Tools/Verification`。
+- Kit 可选导出源事实：`Assets/StellarFramework/KitCatalog/KitDistributionCatalog.json`。
+- General / Extensions 仓库归属：`Assets/StellarFramework/KitCatalog/RepositoryReleaseCatalog.json`。
 
-- MSV：Model 管状态，Service 管业务规则与状态变化，View 管表现和输入转换。
-- Adapter Isolation：Unity / 第三方 SDK / 存储 / 网络 / 平台实现不污染 Core。
-- Foundation 不能依赖 Extension；General Runtime 不能依赖 Extensions Runtime。
-- 失败必须显式，不允许吞异常或通过 catch-all fallback 伪装成功。
-- 热路径优先低 GC，避免不必要 LINQ、反射扫描和隐式分配。
-- Dev 中保持完整工程，不使用 submodule、重复源码或跨仓相对路径依赖来模拟发布边界。
+Catalog 当前定义 84 个可选择分发 Profile 和 5 个 Recommended Profile。Profile 可以对应一个 Runtime Kit、Adapter、Editor 工具或单文件导出；导出器会根据声明补齐框架内依赖。添加或调整能力时要同步检查 Profile、依赖闭包、UPM 声明、文档和导出验证，不能只“让源码能编译”。
 
-详细规则见 `Assets/StellarFramework/FrameworkDoc/01-Architecture/KitArchitectureGuide.md`。
+## 新 Kit / 功能的完成标准
 
-## 主要能力
+1. 先明确职责、公开 Contract、依赖方向和平台条件；Foundation / General Runtime 不反向依赖 Extensions。
+2. Runtime 与 Unity、第三方 SDK、资源后端之间使用清楚的 Adapter 边界。遵循 MSV：Model 持有状态，Service 承担规则，View 转换表现与输入。
+3. 为使用者写入门文档，明确最小代码路径、依赖、失败行为、配置步骤和排错方式。
+4. 把能力登记到 Catalog，确认单 Kit Profile 能独立选择；只在有清晰价值时增加 Recommended Profile。
+5. 提供必要的 Editor / Tools Hub 工作流，但不要让 Runtime Kit 依赖 Editor 程序集。
+6. 为新行为加有针对性的 EditMode / PlayMode / FrameworkValidation 覆盖；覆盖失败路径和依赖边界。
+7. 在干净消费者组合中验证导出物可编译。资源加载、热更新、平台相关能力还要运行对应 Player / Android Release Gate。
 
-General：`TimeKit`、`LocalizationKit`、UIKit、UIAdaptationKit、ResKit、SaveKit、ConfigKit、SettingsKit、AudioKit、EventKit、PoolKit、SingletonKit、FSMKit、ActionKit、HttpKit 等。
+## 验证顺序
 
-Extensions：`GridKit`、`SpatialKit`、`SimulationKit`、`PathKit`、WorldKit、WorldGenKit、PlacementKit、FlowKit、HybridCLRKit 等。
+按改动范围从窄到宽：
 
-## 验证
+1. Unity Console：编译通过，检查新增错误和警告。
+2. 运行受影响的 EditMode / FrameworkValidation。
+3. 运行受影响的 PlayMode，重点检查异步生命周期、场景和真实运行行为。
+4. 执行 Architecture / Catalog / Packaging Policy，验证可导出性及边界。
+5. 对发布组合运行 Clean Consumer Compile；对构建、资源或热更功能再跑 Player / Release Gate。
 
-研发变更至少按影响范围执行：
+测试入口和验证范围见 [Validation Architecture](Assets/StellarFrameworkVerification/ValidationArchitecture.md) 与 [当前验证摘要](Assets/StellarFramework/FrameworkDoc/08-Validation/ValidationCurrentStatus.md)。Unity Test Runner 自动化优先使用项目里的 `stellar_test_run_safe`，避免 Refresh / Compile 和 Test Runner 并发造成误报。
 
-```text
-Compile
--> Focused EditMode
--> FrameworkValidation
--> PlayMode
--> Architecture / Catalog / Packaging Policy
--> Clean Consumer / Player / Release Gate（按能力）
-```
+### Android 与 HotUpdate
 
-自动 Test Runner 优先使用项目侧 `stellar_test_run_safe`，避免 Refresh / Compile 与 EditMode Test Runner 的历史竞态。
+Android Release Gate 使用 Android API 35 虚拟设备，验证 Release APK 安装、首次启动、进程重启，以及 HotUpdate Profile 的冷下载与缓存命中。先按 [Android 验证指南](Tools/AndroidVerification/README.md)准备 Android SDK、API 35 AVD 和硬件虚拟化，再从本仓根目录运行：
 
-验证架构：`Assets/StellarFrameworkVerification/ValidationArchitecture.md`。
-当前验证摘要：`Assets/StellarFramework/FrameworkDoc/08-Validation/ValidationCurrentStatus.md`。
+~~~powershell
+powershell -ExecutionPolicy Bypass -File .\Tools\AndroidVerification\Test-StellarAndroidEnvironment.ps1
+powershell -ExecutionPolicy Bypass -File .\Tools\AndroidVerification\Invoke-StellarAndroidReleaseVerification.ps1
+powershell -ExecutionPolicy Bypass -File .\Tools\AndroidVerification\Invoke-StellarAndroidReleaseVerification.ps1 -HotUpdate
+~~~
 
-## 三仓发布
+结果和截图保存在 `Tools/AndroidVerification/Results`。该 Gate 是模拟器 smoke / release 检查；真实设备 GPU、ARM64 原生插件、厂商 ROM、XR / PICO 和硬件传感器仍要在相应设备上单独验证。
 
-先执行：
+## 从 Dev 生成发布仓
 
-```text
+发布前先提交所有选中源码和生成模板，然后预览：
+
+~~~powershell
 python Tools/RepositoryPublisher/publish_repositories.py --dry-run
-```
+~~~
 
-Dry Run 会保证：
+确认 General / Extensions 的 Profile 归属、文件集合和依赖正确，验证状态为 PASS 后生成本地发布工程：
 
-- 每个 Distribution Profile 恰好属于一个发布目标。
-- General 不依赖任何 Extension Profile。
-- Extensions 显式记录所需 General Profile。
-- 两个用户仓不会静默共享 Runtime 源码。
+~~~powershell
+python Tools/RepositoryPublisher/publish_repositories.py --general-target C:\GitProject\StellarFramework --extensions-target C:\GitProject\StellarFramework.Extensions --validation PASS
+~~~
 
-随后按 `Tools/RepositoryPublisher/README.md` 生成用户仓，并分别执行 Clean Consumer / Release Gate。
+**发布命令会重建目标仓除 .git 外的内容。** 先确认目标目录和 origin 指向正确仓库；不要把未保存的本地修改放在发布仓里。发布后检查两个 `RELEASE-MANIFEST.json` 的 sourceCommit 与当前 Dev HEAD 一致，运行 Consumer / 静态发布验证，再提交 General 和 Extensions。上传远端或发布 Tag 前应单独完成所需审批和版本决策。
 
-## 贡献与问题修复
-
-用户仓发现问题时，在本仓修复、验证、再重新发布。用户仓中的 Release Manifest 必须能追溯到本仓 Source SHA。
+生成逻辑、参数和来源保护见 `Tools/RepositoryPublisher/README.md`。

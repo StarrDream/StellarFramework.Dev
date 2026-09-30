@@ -10,6 +10,8 @@ python Tools/RepositoryPublisher/publish_repositories.py --dry-run
 
 The dry run validates profile ownership, rejects General -> Extensions dependencies, reports file counts and calculates which General profiles are required by Extensions.
 
+The publisher renders user-facing documentation from the Dev templates under `Templates/`. Both release repositories include Chinese and English READMEs; update the templates here so release documentation stays generated from the same source as the code. The target manifests also retain the source commit and the release's validation status.
+
 ## Staging / release
 
 ```text

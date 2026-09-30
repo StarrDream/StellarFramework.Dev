@@ -27,6 +27,7 @@ REPOSITORY_CATALOG = Path("Assets/StellarFramework/KitCatalog/RepositoryReleaseC
 GENERAL_README_TEMPLATE = Path("Tools/RepositoryPublisher/Templates/StellarFramework.README.md")
 GENERAL_README_EN_TEMPLATE = Path("Tools/RepositoryPublisher/Templates/StellarFramework.README_EN.md")
 EXTENSIONS_README_TEMPLATE = Path("Tools/RepositoryPublisher/Templates/StellarFramework.Extensions.README.md")
+EXTENSIONS_README_EN_TEMPLATE = Path("Tools/RepositoryPublisher/Templates/StellarFramework.Extensions.README_EN.md")
 GENERAL_GITIGNORE_TEMPLATE = Path("Tools/RepositoryPublisher/Templates/StellarFramework.gitignore")
 EXTENSIONS_GITIGNORE_TEMPLATE = Path("Tools/RepositoryPublisher/Templates/StellarFramework.Extensions.gitignore")
 PUBLISHER_SCRIPT = Path("Tools/RepositoryPublisher/publish_repositories.py")
@@ -432,11 +433,12 @@ def write_product_files(
         write_text(target / "Packages/manifest.json", json.dumps(package_manifest, indent=2) + "\n")
     else:
         write_text(target / "README.md", render_template(source_root / EXTENSIONS_README_TEMPLATE, values))
+        write_text(target / "README_EN.md", render_template(source_root / EXTENSIONS_README_EN_TEMPLATE, values))
         write_text(target / ".gitignore", (source_root / EXTENSIONS_GITIGNORE_TEMPLATE).read_text(encoding="utf-8"))
 
-    final_files = list(files) + ["README.md", ".gitignore", "RELEASE-MANIFEST.json"]
+    final_files = list(files) + ["README.md", "README_EN.md", ".gitignore", "RELEASE-MANIFEST.json"]
     if plan.product == "StellarFramework":
-        final_files.extend(["README_EN.md", "Packages/manifest.json"])
+        final_files.append("Packages/manifest.json")
     write_release_manifest(
         target,
         plan,
@@ -465,7 +467,11 @@ def release_inputs(source_root: Path, plan: ProductPlan, files: Sequence[str]) -
             "Packages/manifest.json",
         ))
     else:
-        inputs.update((str(EXTENSIONS_README_TEMPLATE), str(EXTENSIONS_GITIGNORE_TEMPLATE)))
+        inputs.update((
+            str(EXTENSIONS_README_TEMPLATE),
+            str(EXTENSIONS_README_EN_TEMPLATE),
+            str(EXTENSIONS_GITIGNORE_TEMPLATE),
+        ))
     return inputs
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -45,6 +46,29 @@ class GeneralManifestDependencyTests(unittest.TestCase):
         self.assertIn("com.code-philosophy.hybridclr", dependencies)
         self.assertIn("hybridclr_unity.git", dependencies["com.code-philosophy.hybridclr"])
         self.assertIn("com.cysharp.unitask", dependencies)
+
+    def test_extensions_release_generates_english_readme_from_dev_template(self) -> None:
+        release = PUBLISHER.load_json(PROJECT_ROOT / PUBLISHER.REPOSITORY_CATALOG)
+        plan = PUBLISHER.collect_plan(PROJECT_ROOT, self.base, release, "extensions")
+        inputs = PUBLISHER.release_inputs(PROJECT_ROOT, plan, [])
+
+        self.assertIn(str(PUBLISHER.EXTENSIONS_README_EN_TEMPLATE), inputs)
+        with tempfile.TemporaryDirectory(prefix="stellar-extensions-readme-") as target_directory:
+            final_files = PUBLISHER.write_product_files(
+                PROJECT_ROOT,
+                Path(target_directory),
+                self.base,
+                release,
+                plan,
+                "test-source-commit",
+                "PASS",
+            )
+            generated_readme = Path(target_directory) / "README_EN.md"
+
+            self.assertIn("README_EN.md", final_files)
+            self.assertTrue(generated_readme.is_file())
+            self.assertIn("Release: 1.0.0", generated_readme.read_text(encoding="utf-8"))
+            self.assertIn("test-source-commit", generated_readme.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
