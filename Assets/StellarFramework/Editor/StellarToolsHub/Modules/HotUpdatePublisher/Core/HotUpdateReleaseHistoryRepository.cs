@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,6 +36,8 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             IReadOnlyList<HotUpdateReleaseRecord> records = List();
             record.Status = HotUpdateReleaseRecordStatus.Active;
             if (record.CreatedAtUtc == default(DateTime)) record.CreatedAtUtc = DateTime.UtcNow;
+            record.CreatedAtUtc = NormalizeUtc(record.CreatedAtUtc);
+            record.CreatedAtUtcIso8601 = FormatUtc(record.CreatedAtUtc);
             AtomicWrite(destination, JsonUtility.ToJson(record, true));
 
             for (int index = 0; index < records.Count; index++)
@@ -64,7 +67,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
         {
             string path = GetRecordPath(releaseId);
             if (!File.Exists(path)) throw new FileNotFoundException($"ReleaseId '{releaseId}' was not found in release history.", path);
-            HotUpdateReleaseRecord record = JsonUtility.FromJson<HotUpdateReleaseRecord>(File.ReadAllText(path));
+            HotUpdateReleaseRecord record = ReadRecord(path, BuildActivationTimestampIndex());
             ValidateRecord(record);
             return record;
         }
@@ -75,13 +78,20 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             string[] paths = Directory.GetFiles(_root, "release-*.json", SearchOption.AllDirectories);
             Array.Sort(paths, StringComparer.OrdinalIgnoreCase);
             var records = new List<HotUpdateReleaseRecord>(paths.Length);
+            Dictionary<string, DateTime> activationTimestamps = BuildActivationTimestampIndex();
             for (int index = 0; index < paths.Length; index++)
             {
-                HotUpdateReleaseRecord record = JsonUtility.FromJson<HotUpdateReleaseRecord>(File.ReadAllText(paths[index]));
+                HotUpdateReleaseRecord record = ReadRecord(paths[index], activationTimestamps);
                 ValidateRecord(record);
                 records.Add(record);
             }
-            records.Sort((left, right) => right.CreatedAtUtc.CompareTo(left.CreatedAtUtc));
+            records.Sort((left, right) =>
+            {
+                int createdOrder = right.CreatedAtUtc.CompareTo(left.CreatedAtUtc);
+                return createdOrder != 0
+                    ? createdOrder
+                    : string.Compare(right.PackageVersion, left.PackageVersion, StringComparison.Ordinal);
+            });
             return records.AsReadOnly();
         }
 
@@ -160,6 +170,8 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             if (string.IsNullOrWhiteSpace(historyEvent.ReleaseId)) throw new ArgumentException("History event ReleaseId is required.", nameof(historyEvent));
             historyEvent.EventId = Guid.NewGuid().ToString("N");
             if (historyEvent.CreatedAtUtc == default(DateTime)) historyEvent.CreatedAtUtc = DateTime.UtcNow;
+            historyEvent.CreatedAtUtc = NormalizeUtc(historyEvent.CreatedAtUtc);
+            historyEvent.CreatedAtUtcIso8601 = FormatUtc(historyEvent.CreatedAtUtc);
             string directory = Path.Combine(_root, "Events");
             Directory.CreateDirectory(directory);
             AtomicWrite(Path.Combine(directory, historyEvent.EventId + ".json"), JsonUtility.ToJson(historyEvent, true));
@@ -175,6 +187,78 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                     throw new ArgumentException("ReleaseId may contain only letters, digits, '-' and '_'.", nameof(releaseId));
             }
             return Path.Combine(_root, "release-" + releaseId + ".json");
+        }
+
+        private HotUpdateReleaseRecord ReadRecord(string path, Dictionary<string, DateTime> activationTimestamps)
+        {
+            HotUpdateReleaseRecord record = JsonUtility.FromJson<HotUpdateReleaseRecord>(File.ReadAllText(path));
+            if (record == null) return null;
+            bool hasStoredTimestamp = TryParseUtc(record.CreatedAtUtcIso8601, out DateTime createdAtUtc);
+            bool hasActivationTimestamp = activationTimestamps.TryGetValue(record.ReleaseId, out DateTime activationTimestamp);
+            if (!hasStoredTimestamp)
+            {
+                // Older Unity JsonUtility records omitted DateTime. The immutable Activated
+                // event retains the release creation time even if later status changes rewrite
+                // the record; use record file time only when no activation event exists.
+                createdAtUtc = hasActivationTimestamp
+                    ? activationTimestamp
+                    : File.GetLastWriteTimeUtc(path);
+                record.CreatedAtUtcIso8601 = FormatUtc(createdAtUtc);
+            }
+            else if (hasActivationTimestamp && createdAtUtc > activationTimestamp)
+            {
+                // Repair legacy timestamps that were inferred from a rewritten record file.
+                createdAtUtc = activationTimestamp;
+                record.CreatedAtUtcIso8601 = FormatUtc(createdAtUtc);
+            }
+            record.CreatedAtUtc = createdAtUtc;
+            return record;
+        }
+
+        private Dictionary<string, DateTime> BuildActivationTimestampIndex()
+        {
+            var timestamps = new Dictionary<string, DateTime>(StringComparer.Ordinal);
+            string eventsDirectory = Path.Combine(_root, "Events");
+            if (!Directory.Exists(eventsDirectory)) return timestamps;
+
+            string[] eventPaths = Directory.GetFiles(eventsDirectory, "*.json", SearchOption.TopDirectoryOnly);
+            for (int index = 0; index < eventPaths.Length; index++)
+            {
+                HotUpdateReleaseHistoryEvent historyEvent =
+                    JsonUtility.FromJson<HotUpdateReleaseHistoryEvent>(File.ReadAllText(eventPaths[index]));
+                if (historyEvent == null ||
+                    !string.Equals(historyEvent.EventType, "Activated", StringComparison.Ordinal) ||
+                    string.IsNullOrWhiteSpace(historyEvent.ReleaseId))
+                    continue;
+
+                DateTime timestamp = TryParseUtc(historyEvent.CreatedAtUtcIso8601, out DateTime parsedTimestamp)
+                    ? parsedTimestamp
+                    : File.GetLastWriteTimeUtc(eventPaths[index]);
+                if (!timestamps.TryGetValue(historyEvent.ReleaseId, out DateTime existing) || timestamp < existing)
+                    timestamps[historyEvent.ReleaseId] = timestamp;
+            }
+            return timestamps;
+        }
+
+        private static bool TryParseUtc(string value, out DateTime createdAtUtc)
+        {
+            if (DateTime.TryParse(value, CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind, out createdAtUtc))
+            {
+                createdAtUtc = NormalizeUtc(createdAtUtc);
+                return true;
+            }
+            return false;
+        }
+
+        private static DateTime NormalizeUtc(DateTime value)
+        {
+            return value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime();
+        }
+
+        private static string FormatUtc(DateTime value)
+        {
+            return NormalizeUtc(value).ToString("O", CultureInfo.InvariantCulture);
         }
 
         private static void ValidateRecord(HotUpdateReleaseRecord record)

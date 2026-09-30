@@ -128,7 +128,7 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
                 }, CancellationToken.None));
 
             Assert.That(staleWriter.Message, Does.Contain("Version pointer changed"));
-            Assert.That(File.ReadAllText(_fixture.ResolveTarget("PackageVersion")).Trim(), Is.EqualTo("1.0.1"));
+            Assert.That(File.ReadAllText(_fixture.ResolveTarget("PackageVersion")), Is.EqualTo("1.0.1"));
         }
 
         [Test]
@@ -144,7 +144,7 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
                 ExpectedCurrentPackageVersion = "1.0.2"
             }, CancellationToken.None).GetAwaiter().GetResult();
 
-            Assert.That(File.ReadAllText(_fixture.ResolveTarget("PackageVersion")).Trim(), Is.EqualTo("1.0.1"));
+            Assert.That(File.ReadAllText(_fixture.ResolveTarget("PackageVersion")), Is.EqualTo("1.0.1"));
         }
 
         [Test]
@@ -156,7 +156,7 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
             Task.WaitAll(first, second);
 
             Assert.That(first.Result ^ second.Result, Is.True);
-            string currentVersion = File.ReadAllText(_fixture.ResolveTarget("PackageVersion")).Trim();
+            string currentVersion = File.ReadAllText(_fixture.ResolveTarget("PackageVersion"));
             Assert.That(new[] { "1.0.1", "1.0.2" }, Does.Contain(currentVersion));
         }
 

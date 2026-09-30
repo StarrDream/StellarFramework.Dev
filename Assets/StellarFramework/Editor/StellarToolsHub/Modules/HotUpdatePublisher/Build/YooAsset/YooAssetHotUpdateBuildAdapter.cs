@@ -87,6 +87,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
     /// <summary>将发布上下文映射到 YooAsset BuiltinBuildParameters 并检查完整产物。</summary>
     public sealed class YooAssetHotUpdateBuildAdapter : IHotUpdateBuildAdapter
     {
+        private static readonly string[] NonPublishOutputFiles = { "OutputCache", "OutputCache.manifest" };
         private readonly IYooAssetBuildRunner _runner;
 
         public YooAssetHotUpdateBuildAdapter(IYooAssetBuildRunner runner = null)
@@ -146,7 +147,9 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             int bundleCount = files.Count(path => path.EndsWith(".bundle", StringComparison.OrdinalIgnoreCase));
             if (bundleCount == 0)
                 return Task.FromResult(Failed("YooAsset build produced no bundle files."));
-            long totalBytes = files.Sum(path => new FileInfo(path).Length);
+            long totalBytes = files
+                .Where(path => !NonPublishOutputFiles.Contains(Path.GetFileName(path), StringComparer.OrdinalIgnoreCase))
+                .Sum(path => new FileInfo(path).Length);
             context.BuildOutput = result.OutputDirectory;
             context.YooAssetBuildOutput = new YooAssetBuildOutput
             {
@@ -154,7 +157,8 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                 OutputDirectory = result.OutputDirectory,
                 BundleCount = bundleCount,
                 TotalBytes = totalBytes,
-                ManifestFiles = manifestFiles
+                ManifestFiles = manifestFiles,
+                NonPublishOutputFiles = (string[])NonPublishOutputFiles.Clone()
             };
             return Task.FromResult(HotUpdatePublishStepResult.Succeeded());
         }

@@ -82,5 +82,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
         public int BundleCount { get; set; }
         public long TotalBytes { get; set; }
         public string[] ManifestFiles { get; set; } = Array.Empty<string>();
+        /// <summary>Root-level build cache files that YooAsset creates but clients do not need.</summary>
+        public string[] NonPublishOutputFiles { get; set; } = Array.Empty<string>();
     }
 }

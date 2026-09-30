@@ -89,6 +89,8 @@ namespace StellarFramework.Editor.HotUpdatePublisher
         {
             string normalized = NormalizePath(path);
             return IsAtOrBelow(normalized, RemoteContentRoot) ||
+                   IsAtOrBelow(normalized, "Assets/HotUpdatePublisherConsumerE2E/Content") ||
+                   IsAtOrBelow(normalized, "Assets/HotUpdatePublisherConsumerE2E/Generated") ||
                    IsAtOrBelow(normalized, "Assets/GameHotUpdate/Code") ||
                    IsAtOrBelow(normalized, "Assets/GameHotUpdate/Metadata") ||
                    IsAtOrBelow(normalized, "Assets/GameHotUpdate/Manifest");
@@ -109,6 +111,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             string normalized = NormalizePath(path);
             if (IsAtOrBelow(normalized, "Tools") ||
                 IsAtOrBelow(normalized, "Assets/StellarFramework/FrameworkDoc") ||
+                IsAtOrBelow(normalized, "Assets/docs") ||
                 IsAtOrBelow(normalized, "Assets/StellarFrameworkVerification") ||
                 IsAtOrBelow(normalized, "Assets/Tests"))
             {

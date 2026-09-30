@@ -227,7 +227,10 @@ namespace StellarFramework.Editor.HotUpdatePublisher
         public string ServerRoot;
 
         /// <summary>记录创建时间（UTC）。</summary>
-        public DateTime CreatedAtUtc;
+        [NonSerialized] public DateTime CreatedAtUtc;
+
+        /// <summary>Unity JsonUtility cannot serialize DateTime, so persist an ISO-8601 UTC value.</summary>
+        public string CreatedAtUtcIso8601;
 
         /// <summary>当前远端发布状态。</summary>
         public HotUpdateReleaseRecordStatus Status;
@@ -266,7 +269,8 @@ namespace StellarFramework.Editor.HotUpdatePublisher
         public string FromVersion;
         public string ToVersion;
         public string Diagnostic;
-        public DateTime CreatedAtUtc;
+        [NonSerialized] public DateTime CreatedAtUtc;
+        public string CreatedAtUtcIso8601;
     }
 
     /// <summary>发布记录的生命周期状态。</summary>

@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Text.RegularExpressions;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -106,24 +105,175 @@ namespace StellarFramework.Editor.HotUpdatePublisher
 
             var report = new HotUpdateReleaseGateReport { RequiredLevel = required };
             context.ReleaseGateReport = report;
-            report.FastGate = await _fastRunner.RunAsync(context, cancellationToken);
-            if (report.FastGate == null || !report.FastGate.Passed)
-                return HotUpdatePublishStepResult.Failed(HotUpdatePublishErrorCode.ReleaseGateFailed,
-                    report.FastGate?.Diagnostic ?? "Fast Gate returned no passing machine evidence.");
-
-            if (required == HotUpdateReleaseGateLevel.Full)
+            using (HotUpdatePlayModeDomainReloadScope.Begin())
             {
-                if (_fullRunner == null)
-                    return HotUpdatePublishStepResult.Failed(HotUpdatePublishErrorCode.FullReleaseGateUnavailable,
-                        "Full Gate is required but no Android or Windows IL2CPP verifier is configured.");
-
-                report.FullGate = await _fullRunner.RunAsync(context, cancellationToken);
-                if (report.FullGate == null || !report.FullGate.Passed)
+                report.FastGate = await _fastRunner.RunAsync(context, cancellationToken);
+                if (report.FastGate == null || !report.FastGate.Passed)
                     return HotUpdatePublishStepResult.Failed(HotUpdatePublishErrorCode.ReleaseGateFailed,
-                        report.FullGate?.Diagnostic ?? "Full Gate returned no passing machine evidence.");
+                        report.FastGate?.Diagnostic ?? "Fast Gate returned no passing machine evidence.");
+
+                if (required == HotUpdateReleaseGateLevel.Full)
+                {
+                    if (_fullRunner == null)
+                        return HotUpdatePublishStepResult.Failed(HotUpdatePublishErrorCode.FullReleaseGateUnavailable,
+                            "Full Gate is required but no Android or Windows IL2CPP verifier is configured.");
+
+                    report.FullGate = await _fullRunner.RunAsync(context, cancellationToken);
+                    if (report.FullGate == null || !report.FullGate.Passed)
+                        return HotUpdatePublishStepResult.Failed(HotUpdatePublishErrorCode.ReleaseGateFailed,
+                            report.FullGate?.Diagnostic ?? "Full Gate returned no passing machine evidence.");
+                }
             }
 
             return HotUpdatePublishStepResult.Succeeded();
+        }
+    }
+
+    /// <summary>
+    /// Keeps Publisher operations alive while a release gate enters PlayMode, then restores the
+    /// project's previous setting. SessionState lets the next editor domain restore it if Unity
+    /// reloads unexpectedly while a gate is running.
+    /// </summary>
+    internal sealed class HotUpdatePlayModeDomainReloadScope : IDisposable
+    {
+        private const string ActiveKey = "StellarFramework.HotUpdatePublisher.DomainReloadScope.Active";
+        private const string EnabledKey = "StellarFramework.HotUpdatePublisher.DomainReloadScope.Enabled";
+        private const string OptionsKey = "StellarFramework.HotUpdatePublisher.DomainReloadScope.Options";
+        private const string SerializedSettingsKey = "StellarFramework.HotUpdatePublisher.DomainReloadScope.SerializedSettings";
+        private const string SerializedSettingsExistedKey = "StellarFramework.HotUpdatePublisher.DomainReloadScope.SerializedSettingsExisted";
+        private static int _scopeDepth;
+
+        private readonly bool _ownsScope;
+        private bool _disposed;
+
+        static HotUpdatePlayModeDomainReloadScope()
+        {
+            RestoreAfterUnexpectedReload();
+        }
+
+        private HotUpdatePlayModeDomainReloadScope(bool ownsScope)
+        {
+            _ownsScope = ownsScope;
+        }
+
+        public static HotUpdatePlayModeDomainReloadScope Begin()
+        {
+            if (_scopeDepth > 0)
+            {
+                _scopeDepth++;
+                return new HotUpdatePlayModeDomainReloadScope(false);
+            }
+
+            bool previousEnabled = EditorSettings.enterPlayModeOptionsEnabled;
+            EnterPlayModeOptions previousOptions = EditorSettings.enterPlayModeOptions;
+            SessionState.SetBool(EnabledKey, previousEnabled);
+            SessionState.SetInt(OptionsKey, (int)previousOptions);
+            CaptureSerializedSettings();
+            SessionState.SetBool(ActiveKey, true);
+            _scopeDepth = 1;
+
+            try
+            {
+                EditorSettings.enterPlayModeOptions = previousOptions | EnterPlayModeOptions.DisableDomainReload;
+                EditorSettings.enterPlayModeOptionsEnabled = true;
+            }
+            catch
+            {
+                RestorePreviousSettings();
+                throw;
+            }
+            return new HotUpdatePlayModeDomainReloadScope(true);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            if (_scopeDepth > 0) _scopeDepth--;
+            if (!_ownsScope || _scopeDepth > 0) return;
+            RestorePreviousSettings();
+        }
+
+        private static void RestoreAfterUnexpectedReload()
+        {
+            if (SessionState.GetBool(ActiveKey, false))
+                RestorePreviousSettings();
+        }
+
+        private static void RestorePreviousSettings()
+        {
+            bool previousEnabled = SessionState.GetBool(EnabledKey, false);
+            EnterPlayModeOptions previousOptions = (EnterPlayModeOptions)SessionState.GetInt(OptionsKey, 0);
+            EditorSettings.enterPlayModeOptions = previousOptions;
+            EditorSettings.enterPlayModeOptionsEnabled = previousEnabled;
+            RestoreSerializedSettings();
+            SessionState.SetBool(ActiveKey, false);
+            _scopeDepth = 0;
+        }
+
+        private static string GetSerializedSettingsPath()
+        {
+            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            return Path.Combine(projectRoot, "ProjectSettings", "EditorSettings.asset");
+        }
+
+        private static void CaptureSerializedSettings()
+        {
+            string settingsPath = GetSerializedSettingsPath();
+            bool exists = File.Exists(settingsPath);
+            SessionState.SetBool(SerializedSettingsExistedKey, exists);
+            if (exists)
+                SessionState.SetString(SerializedSettingsKey, Convert.ToBase64String(File.ReadAllBytes(settingsPath)));
+            else
+                SessionState.EraseString(SerializedSettingsKey);
+        }
+
+        private static void RestoreSerializedSettings()
+        {
+            string settingsPath = GetSerializedSettingsPath();
+            bool existed = SessionState.GetBool(SerializedSettingsExistedKey, false);
+            string serialized = SessionState.GetString(SerializedSettingsKey, string.Empty);
+            byte[] originalBytes = existed && !string.IsNullOrEmpty(serialized)
+                ? Convert.FromBase64String(serialized)
+                : null;
+            RestoreSerializedSettingsBytes(settingsPath, existed, originalBytes);
+
+            SessionState.EraseString(SerializedSettingsKey);
+            SessionState.SetBool(SerializedSettingsExistedKey, false);
+
+            // Unity can flush ProjectSettings again when it finishes leaving Play Mode. Keep
+            // one delayed exact restore behind that Editor callback so serializer formatting
+            // cannot leave a project-only diff after the release gate has returned.
+            EditorApplication.delayCall += () => RestoreSerializedSettingsBytes(settingsPath, existed, originalBytes);
+        }
+
+        private static void RestoreSerializedSettingsBytes(string settingsPath, bool existed, byte[] originalBytes)
+        {
+            if (SessionState.GetBool(ActiveKey, false)) return;
+            if (!existed)
+            {
+                if (File.Exists(settingsPath)) File.Delete(settingsPath);
+                return;
+            }
+
+            if (originalBytes == null) return;
+            if (File.Exists(settingsPath))
+            {
+                byte[] currentBytes = File.ReadAllBytes(settingsPath);
+                if (currentBytes.Length == originalBytes.Length)
+                {
+                    bool identical = true;
+                    for (int index = 0; index < currentBytes.Length; index++)
+                    {
+                        if (currentBytes[index] == originalBytes[index]) continue;
+                        identical = false;
+                        break;
+                    }
+                    if (identical) return;
+                }
+            }
+
+            File.WriteAllBytes(settingsPath, originalBytes);
         }
     }
 
@@ -157,6 +307,10 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             if (!File.Exists(scriptPath)) throw new FileNotFoundException("Canonical Fast Gate script was not found.", scriptPath);
 
             DateTime started = DateTime.UtcNow;
+            HotUpdateReleaseGateRun cached = await ReadOrWaitForExistingEvidenceAsync(evidencePath, started, cancellationToken);
+            if (cached != null) return cached;
+
+            WriteRunningMarker(evidencePath);
             string args = "-NoProfile -ExecutionPolicy Bypass -File " + Quote(scriptPath) +
                 " -UnitySkillsUrl " + Quote(_unitySkillsUrl) +
                 " -TimeoutMinutes " + _timeoutMinutes.ToString(CultureInfo.InvariantCulture) +
@@ -174,12 +328,83 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             };
             if (process == null || process.ExitCode != 0 || !File.Exists(evidencePath)) return run;
 
-            HotUpdateFastGateEvidence evidence = JsonUtility.FromJson<HotUpdateFastGateEvidence>(File.ReadAllText(evidencePath));
-            run.Passed = evidence != null && string.Equals(evidence.status, "PASS", StringComparison.Ordinal) &&
-                evidence.test != null && evidence.test.totalTests == 1 && evidence.test.passedTests == 1 &&
-                evidence.test.failedTests == 0 && evidence.test.skippedTests == 0 && evidence.test.inconclusiveTests == 0;
+            HotUpdateFastGateEvidence evidence = ReadEvidence(evidencePath);
+            run.Passed = IsPassingEvidence(evidence);
             run.Diagnostic = run.Passed ? string.Empty : "Fast Gate process completed without exact 1/1 PASS evidence.";
             return run;
+        }
+
+        private async Task<HotUpdateReleaseGateRun> ReadOrWaitForExistingEvidenceAsync(
+            string evidencePath,
+            DateTime started,
+            CancellationToken cancellationToken)
+        {
+            if (!File.Exists(evidencePath)) return null;
+            DateTime deadline = DateTime.UtcNow.AddMinutes(_timeoutMinutes + 2);
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                HotUpdateFastGateEvidence evidence = ReadEvidence(evidencePath);
+                if (evidence != null && (string.Equals(evidence.status, "PASS", StringComparison.Ordinal) ||
+                    string.Equals(evidence.status, "FAIL", StringComparison.Ordinal)))
+                {
+                    bool passed = IsPassingEvidence(evidence);
+                    return new HotUpdateReleaseGateRun
+                    {
+                        Passed = passed,
+                        EvidencePath = evidencePath,
+                        Diagnostic = passed ? string.Empty : "Existing Fast Gate evidence did not prove exact 1/1 PASS.",
+                        StartedAtUtc = started,
+                        CompletedAtUtc = DateTime.UtcNow
+                    };
+                }
+
+                if (DateTime.UtcNow >= deadline)
+                {
+                    return new HotUpdateReleaseGateRun
+                    {
+                        Passed = false,
+                        EvidencePath = evidencePath,
+                        Diagnostic = "Timed out waiting for the interrupted Fast Gate process to write final evidence.",
+                        StartedAtUtc = started,
+                        CompletedAtUtc = DateTime.UtcNow
+                    };
+                }
+
+                await Task.Delay(1000, cancellationToken);
+            }
+        }
+
+        private static HotUpdateFastGateEvidence ReadEvidence(string path)
+        {
+            try
+            {
+                return File.Exists(path)
+                    ? JsonUtility.FromJson<HotUpdateFastGateEvidence>(File.ReadAllText(path))
+                    : null;
+            }
+            catch (IOException)
+            {
+                return null;
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+        }
+
+        private static bool IsPassingEvidence(HotUpdateFastGateEvidence evidence)
+        {
+            return evidence != null && string.Equals(evidence.status, "PASS", StringComparison.Ordinal) &&
+                evidence.test != null && evidence.test.totalTests == 1 && evidence.test.passedTests == 1 &&
+                evidence.test.failedTests == 0 && evidence.test.skippedTests == 0 && evidence.test.inconclusiveTests == 0;
+        }
+
+        private static void WriteRunningMarker(string evidencePath)
+        {
+            string directory = Path.GetDirectoryName(evidencePath);
+            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+            File.WriteAllText(evidencePath, "{\"status\":\"RUNNING\"}", new UTF8Encoding(false));
         }
 
         private static string Sanitize(string value)
@@ -213,8 +438,6 @@ namespace StellarFramework.Editor.HotUpdatePublisher
     /// <summary>Uses the existing Android Release Verification pipeline for the Android Full Gate.</summary>
     public sealed class PowerShellHotUpdateAndroidFullReleaseGateRunner : IHotUpdateFullReleaseGateRunner
     {
-        private static readonly Regex ArtifactsPathPattern = new Regex(
-            @"Artifacts:\s*(?<path>.+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private readonly string _projectRoot;
         private readonly string _unitySkillsUrl;
         private readonly int _buildTimeoutMinutes;
@@ -242,12 +465,19 @@ namespace StellarFramework.Editor.HotUpdatePublisher
 
             string script = Path.Combine(_projectRoot, "Tools", "AndroidVerification", "Invoke-StellarAndroidReleaseVerification.ps1");
             if (!File.Exists(script)) throw new FileNotFoundException("Existing Android Release Verification script was not found.", script);
+            string safeId = string.IsNullOrWhiteSpace(context.ReleaseId) ? "unassigned" : Sanitize(context.ReleaseId);
+            string evidencePath = Path.Combine(_projectRoot, "BuildArtifacts", "HotUpdate", "ReleaseGates", safeId + "-android-full-gate.json");
+            DateTime started = DateTime.UtcNow;
+            HotUpdateReleaseGateRun cached = await ReadOrWaitForExistingEvidenceAsync(evidencePath, started, cancellationToken);
+            if (cached != null) return cached;
+
+            WriteRunningMarker(evidencePath);
             string arguments = "-NoProfile -ExecutionPolicy Bypass -File " + Quote(script) +
                 " -UnitySkillsUrl " + Quote(_unitySkillsUrl) +
                 " -BuildTimeoutMinutes " + _buildTimeoutMinutes.ToString(CultureInfo.InvariantCulture) +
-                " -HotUpdate";
+                " -HotUpdate" +
+                " -ReleaseGateEvidencePath " + Quote(evidencePath);
 
-            DateTime started = DateTime.UtcNow;
             HotUpdateGateProcessResult process = await _processRunner.RunAsync("powershell.exe", arguments, _projectRoot,
                 TimeSpan.FromMinutes(_buildTimeoutMinutes + 10), cancellationToken);
             var run = new HotUpdateReleaseGateRun
@@ -257,30 +487,99 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                 CompletedAtUtc = DateTime.UtcNow,
                 Diagnostic = process?.Diagnostic ?? "Android Full Gate process returned no result."
             };
-            if (process == null || process.ExitCode != 0) return run;
-
-            Match match = ArtifactsPathPattern.Match(process.Diagnostic ?? string.Empty);
-            if (!match.Success)
-            {
-                run.Diagnostic = "Android verifier exited successfully but did not identify its machine-evidence directory.";
-                return run;
-            }
-
-            string evidencePath = Path.Combine(match.Groups["path"].Value.Trim(), "pipeline-result.json");
             run.EvidencePath = evidencePath;
-            if (!File.Exists(evidencePath))
+            if (process == null || process.ExitCode != 0 || !File.Exists(evidencePath))
             {
-                run.Diagnostic = "Android verifier exited successfully but pipeline-result.json is missing.";
+                run.Diagnostic = "Android verifier failed or its release-specific evidence file is missing.";
                 return run;
             }
 
-            AndroidFullGateEvidence evidence = JsonUtility.FromJson<AndroidFullGateEvidence>(File.ReadAllText(evidencePath));
-            run.Passed = evidence != null && evidence.status == "PASS" && evidence.profile == "HotUpdate" &&
+            AndroidFullGateEvidence evidence = ReadEvidence(evidencePath);
+            run.Passed = IsPassingEvidence(evidence);
+            run.Diagnostic = run.Passed ? string.Empty : "Android Full Gate evidence did not prove both cold-start and restart HotUpdate runtime passes.";
+            return run;
+        }
+
+        private async Task<HotUpdateReleaseGateRun> ReadOrWaitForExistingEvidenceAsync(
+            string evidencePath,
+            DateTime started,
+            CancellationToken cancellationToken)
+        {
+            if (!File.Exists(evidencePath)) return null;
+            DateTime deadline = DateTime.UtcNow.AddMinutes(_buildTimeoutMinutes + 10);
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                AndroidFullGateEvidence evidence = ReadEvidence(evidencePath);
+                if (evidence != null && (string.Equals(evidence.status, "PASS", StringComparison.Ordinal) ||
+                    string.Equals(evidence.status, "FAIL", StringComparison.Ordinal)))
+                {
+                    bool passed = IsPassingEvidence(evidence);
+                    return new HotUpdateReleaseGateRun
+                    {
+                        Passed = passed,
+                        EvidencePath = evidencePath,
+                        Diagnostic = passed ? string.Empty : "Existing Android Full Gate evidence did not prove both cold-start and restart HotUpdate runtime passes.",
+                        StartedAtUtc = started,
+                        CompletedAtUtc = DateTime.UtcNow
+                    };
+                }
+
+                if (DateTime.UtcNow >= deadline)
+                {
+                    return new HotUpdateReleaseGateRun
+                    {
+                        Passed = false,
+                        EvidencePath = evidencePath,
+                        Diagnostic = "Timed out waiting for the interrupted Android Full Gate process to write final evidence.",
+                        StartedAtUtc = started,
+                        CompletedAtUtc = DateTime.UtcNow
+                    };
+                }
+
+                await Task.Delay(1000, cancellationToken);
+            }
+        }
+
+        private static AndroidFullGateEvidence ReadEvidence(string path)
+        {
+            try
+            {
+                return File.Exists(path)
+                    ? JsonUtility.FromJson<AndroidFullGateEvidence>(File.ReadAllText(path))
+                    : null;
+            }
+            catch (IOException)
+            {
+                return null;
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+        }
+
+        private static bool IsPassingEvidence(AndroidFullGateEvidence evidence)
+        {
+            return evidence != null && evidence.status == "PASS" && evidence.profile == "HotUpdate" &&
                 evidence.productVerificationStatus == "PASS" && evidence.cleanupStatus == "PASS" &&
                 IsAndroidRuntimePass(evidence.hotUpdateRuntime?.coldStart) &&
                 IsAndroidRuntimePass(evidence.hotUpdateRuntime?.restart);
-            run.Diagnostic = run.Passed ? string.Empty : "Android Full Gate evidence did not prove both cold-start and restart HotUpdate runtime passes.";
-            return run;
+        }
+
+        private static void WriteRunningMarker(string evidencePath)
+        {
+            string directory = Path.GetDirectoryName(evidencePath);
+            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+            File.WriteAllText(evidencePath, "{\"status\":\"RUNNING\"}", new UTF8Encoding(false));
+        }
+
+        private static string Sanitize(string value)
+        {
+            char[] chars = value.ToCharArray();
+            for (int index = 0; index < chars.Length; index++)
+                if (!char.IsLetterOrDigit(chars[index]) && chars[index] != '-' && chars[index] != '_') chars[index] = '_';
+            return new string(chars);
         }
 
         private static bool IsAndroidRuntimePass(AndroidRuntimeEvidence runtime)

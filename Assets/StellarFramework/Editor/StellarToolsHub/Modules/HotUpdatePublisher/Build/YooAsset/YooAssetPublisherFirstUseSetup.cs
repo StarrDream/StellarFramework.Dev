@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using StellarFramework.HybridCLR;
 using UnityEditor;
 using YooAsset.Editor;
 
@@ -38,6 +39,20 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                 return;
             }
 
+            string[] metadataPaths;
+            try
+            {
+                HotUpdateSettings settings = HotUpdateSettings.LoadOrCreateDefault();
+                metadataPaths = HotUpdateAotMetadataSelection.GetGeneratedAssetPaths(
+                    generatedRoot, settings.AotMetadataKeys);
+            }
+            catch (Exception exception) when (exception is IOException || exception is InvalidDataException || exception is ArgumentException)
+            {
+                UnityEngine.Debug.LogError(
+                    "[HotUpdatePublisher] HotUpdateSettings AOT metadata selection is invalid: " + exception.Message);
+                return;
+            }
+
             string consumerBehaviorAbsolutePath = ToAbsoluteAssetPath(ConsumerBehaviorPath);
             Directory.CreateDirectory(Path.GetDirectoryName(consumerBehaviorAbsolutePath));
             if (!File.Exists(consumerBehaviorAbsolutePath))
@@ -60,8 +75,19 @@ namespace StellarFramework.Editor.HotUpdatePublisher
 
             if (package != null)
             {
+                if (!package.EnableAddressable)
+                {
+                    // The runtime consumer loads resources by address. YooAsset emits empty
+                    // addresses when this package option is disabled, even when collectors
+                    // use AddressByFileName.
+                    package.EnableAddressable = true;
+                    AssetBundleCollectorSettingData.SaveFile();
+                    UnityEngine.Debug.Log(
+                        $"[HotUpdatePublisher] Enabled Addressable on existing business package '{packageName}' so AddressByFileName collectors produce runtime-loadable asset addresses.");
+                }
+
                 UnityEngine.Debug.Log(
-                    $"[HotUpdatePublisher] Business package '{packageName}' already exists. Existing configuration was preserved; review it in the Collector window.");
+                    $"[HotUpdatePublisher] Business package '{packageName}' already exists. Existing groups and collectors were preserved; Addressable was enabled if needed. Review the package in the Collector window.");
                 EditorApplication.ExecuteMenuItem("YooAsset/AssetBundle Collector");
                 return;
             }
@@ -70,7 +96,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             {
                 PackageName = packageName,
                 PackageDesc = "HotUpdate Publisher business package. Not the Verification package.",
-                EnableAddressable = false,
+                EnableAddressable = true,
                 SupportExtensionless = true,
                 LocationToLower = false,
                 IncludeAssetGUID = false,
@@ -89,10 +115,8 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             AddCollector(group, ConsumerBehaviorPath);
             AddCollector(group, generatedRoot + "/Manifest/HotUpdateManifest.json");
             AddCollector(group, generatedRoot + "/Code/HotUpdate.dll.bytes");
-            AddCollector(group, generatedRoot + "/Metadata/mscorlib.dll.bytes");
-            AddCollector(group, generatedRoot + "/Metadata/System.dll.bytes");
-            AddCollector(group, generatedRoot + "/Metadata/System.Core.dll.bytes");
-            AddCollector(group, generatedRoot + "/Metadata/UnityEngine.CoreModule.dll.bytes");
+            foreach (string metadataPath in metadataPaths)
+                AddCollector(group, metadataPath);
 
             setting.Packages.Add(package);
             AssetBundleCollectorSettingData.SaveFile();

@@ -58,6 +58,8 @@ Assets/Resources/HotUpdateSettings.asset
 - `HotUpdateEntryClass` / `HotUpdateEntryMethod`：导出 Manifest 时使用的默认入口。
 - `AotMetadataKeys`：导出/Authoring 默认 metadata 列表。
 
+HotUpdate Publisher 会把 `AotMetadataKeys` 当作本次运行时需要的 metadata 子集：从所选 BaseRelease 中只导出这些 DLL，并将同一组 key 写入 Manifest。每个 key 都必须能在所选 BaseRelease 中找到对应 metadata。
+
 运行时真正的 DLL SHA256、入口和 metadata 列表以 `HotUpdateManifest.json` 为事实来源。
 
 ## HotUpdateManifest.json

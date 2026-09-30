@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using StellarFramework.Editor.Modules;
+using StellarFramework.HybridCLR;
 using UnityEditor;
 using UnityEngine;
 using HybridCLR.Editor.Commands;
@@ -108,8 +109,20 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                 string.IsNullOrWhiteSpace(context.HotUpdateManifestAssetPath))
                 return Task.FromResult(Failed("HotUpdate asset output root and Manifest asset path are required."));
 
-            IReadOnlyList<string> metadataPaths = _baseReleaseRepository.GetAotMetadataPaths(
+            IReadOnlyList<string> allMetadataPaths = _baseReleaseRepository.GetAotMetadataPaths(
                 context.SelectedBaseRelease, context.SelectedBaseReleaseRequirements);
+            HotUpdateSettings settings = HotUpdateSettings.LoadOrCreateDefault();
+            IReadOnlyList<string> metadataPaths;
+            try
+            {
+                metadataPaths = HotUpdateAotMetadataSelection.SelectBaseReleasePaths(
+                    allMetadataPaths, settings.AotMetadataKeys);
+            }
+            catch (Exception exception) when (exception is IOException || exception is InvalidDataException || exception is ArgumentException)
+            {
+                return Task.FromResult(Failed("Configured AOT metadata could not be resolved from the selected BaseRelease: " + exception.Message));
+            }
+
             string root = context.HotUpdateAssetOutputRoot.Replace('\\', '/').TrimEnd('/');
             string codeFolder = root + "/Code";
             string metadataFolder = root + "/Metadata";

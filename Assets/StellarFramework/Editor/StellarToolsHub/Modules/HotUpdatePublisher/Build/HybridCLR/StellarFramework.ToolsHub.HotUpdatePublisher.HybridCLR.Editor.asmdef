@@ -4,6 +4,7 @@
   "references": [
     "StellarFramework.ToolsHub.HotUpdatePublisher.Editor",
     "StellarFramework.ToolsHub.HybridCLRKit.Editor",
+    "StellarFramework.HybridCLRKit",
     "HybridCLR.Editor"
   ],
   "includePlatforms": ["Editor"],

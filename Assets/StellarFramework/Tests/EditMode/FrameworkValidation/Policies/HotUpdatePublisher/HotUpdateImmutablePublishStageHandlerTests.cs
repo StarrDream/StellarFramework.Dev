@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -23,10 +24,12 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
             File.WriteAllText(Path.Combine(_root, "PackageManifest.json"), "json manifest");
             File.WriteAllText(Path.Combine(_root, "PackageManifest.hash"), "manifest hash");
             File.WriteAllText(Path.Combine(_root, "PackageVersion"), "2.0.0");
+            File.WriteAllText(Path.Combine(_root, "OutputCache"), "incremental build cache");
+            File.WriteAllText(Path.Combine(_root, "OutputCache.manifest"), "incremental cache manifest");
             Directory.CreateDirectory(Path.Combine(_root, "bundles"));
             File.WriteAllText(Path.Combine(_root, "bundles", "content.bundle"), "bundle bytes");
 
-            _target = new RecordingPublishTarget();
+            _target = new RecordingPublishTarget(_root);
             _context = new HotUpdatePublishContext
             {
                 PackageVersion = "2.0.0",
@@ -50,14 +53,17 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
         }
 
         [Test]
-        public void PrepareUpload_SnapshotsEveryFileExceptMutablePackageVersionPointer()
+        public void PrepareUpload_ExcludesPointerAndYooAssetIncrementalCacheFiles()
         {
+            _context.YooAssetBuildOutput.NonPublishOutputFiles = new[] { "OutputCache", "OutputCache.manifest" };
             HotUpdatePublishStepResult result = new HotUpdatePrepareUploadStageHandler()
                 .ExecuteAsync(_context, CancellationToken.None).GetAwaiter().GetResult();
 
             Assert.That(result.Success, Is.True);
             Assert.That(_context.PublishFiles.Count, Is.EqualTo(4));
             Assert.That(_context.PublishFiles, Has.None.Property("RelativePath").EqualTo("PackageVersion"));
+            Assert.That(_context.PublishFiles, Has.None.Property("RelativePath").EqualTo("OutputCache"));
+            Assert.That(_context.PublishFiles, Has.None.Property("RelativePath").EqualTo("OutputCache.manifest"));
             Assert.That(_context.VersionPublishRequest.PointerRelativePath, Is.EqualTo("PackageVersion"));
             Assert.That(_context.VersionPublishRequest.PackageVersion, Is.EqualTo("2.0.0"));
             Assert.That(_context.VersionPublishRequest.ExpectedCurrentPackageVersion, Is.EqualTo("1.9.0"));
@@ -100,6 +106,22 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
             Assert.That(_target.Events, Does.Not.Contain("publish-version"));
         }
 
+        [Test]
+        public void PublishVersionStage_RejectsPointerWithTrailingNewline()
+        {
+            PrepareUpload();
+            new HotUpdateUploadFilesStageHandler().ExecuteAsync(_context, CancellationToken.None).GetAwaiter().GetResult();
+            new HotUpdateRemoteVerificationStageHandler(new RecordingRemoteVerifier(_target.Events))
+                .ExecuteAsync(_context, CancellationToken.None).GetAwaiter().GetResult();
+            _target.AppendNewlineOnPublish = true;
+
+            HotUpdatePublishStepResult result = new HotUpdatePublishVersionStageHandler()
+                .ExecuteAsync(_context, CancellationToken.None).GetAwaiter().GetResult();
+
+            Assert.That(result.Success, Is.False);
+            Assert.That(result.Error, Does.Contain("exact UTF-8 PackageVersion"));
+        }
+
         private void PrepareUpload()
         {
             new HotUpdatePrepareUploadStageHandler().ExecuteAsync(_context, CancellationToken.None).GetAwaiter().GetResult();
@@ -107,7 +129,11 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
 
         private sealed class RecordingPublishTarget : IHotUpdatePublishTarget
         {
+            private readonly string _root;
+
+            public RecordingPublishTarget(string root) { _root = root; }
             public readonly List<string> Events = new List<string>();
+            public bool AppendNewlineOnPublish;
 
             public Task<HotUpdatePublishTargetFileInfo> UploadAsync(HotUpdatePublishFile file, CancellationToken cancellationToken)
             {
@@ -117,7 +143,14 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
             }
 
             public Task<bool> ExistsAsync(string relativePath, CancellationToken cancellationToken) => Task.FromResult(false);
-            public Task<HotUpdatePublishTargetFileInfo> GetInfoAsync(string relativePath, CancellationToken cancellationToken) => Task.FromResult<HotUpdatePublishTargetFileInfo>(null);
+            public Task<HotUpdatePublishTargetFileInfo> GetInfoAsync(string relativePath, CancellationToken cancellationToken)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                string path = Path.Combine(_root, relativePath);
+                if (!File.Exists(path)) return Task.FromResult<HotUpdatePublishTargetFileInfo>(null);
+                HotUpdatePublishFile file = HotUpdatePublishFile.FromFile(relativePath, path);
+                return Task.FromResult(new HotUpdatePublishTargetFileInfo(file.RelativePath, file.Length, file.Sha256));
+            }
 
             public Task VerifyAsync(IReadOnlyList<HotUpdatePublishFile> files, CancellationToken cancellationToken)
             {
@@ -128,7 +161,10 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
 
             public Task PublishVersionAsync(HotUpdateVersionPublishRequest request, CancellationToken cancellationToken)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Events.Add("publish-version");
+                File.WriteAllText(Path.Combine(_root, request.PointerRelativePath),
+                    request.PackageVersion + (AppendNewlineOnPublish ? "\n" : string.Empty), new UTF8Encoding(false));
                 return Task.CompletedTask;
             }
 

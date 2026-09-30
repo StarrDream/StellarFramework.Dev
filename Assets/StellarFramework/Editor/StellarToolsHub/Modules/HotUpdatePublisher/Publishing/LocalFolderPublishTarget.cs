@@ -265,7 +265,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             string temporaryPath = pointerPath + ".publish-" + Guid.NewGuid().ToString("N") + ".tmp";
             try
             {
-                File.WriteAllText(temporaryPath, request.PackageVersion + "\n", new UTF8Encoding(false));
+                File.WriteAllText(temporaryPath, request.PackageVersion, new UTF8Encoding(false));
                 cancellationToken.ThrowIfCancellationRequested();
                 if (File.Exists(pointerPath))
                     File.Replace(temporaryPath, pointerPath, null);

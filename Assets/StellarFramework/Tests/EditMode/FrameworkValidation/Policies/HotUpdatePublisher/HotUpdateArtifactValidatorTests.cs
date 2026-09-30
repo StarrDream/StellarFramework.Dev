@@ -29,7 +29,7 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
         }
 
         [Test]
-        public void Validate_CompleteArtifactsMatchingBaseRelease_ReturnsValidReport()
+        public void Validate_ArtifactsWithConfiguredAotSubsetMatchSelectedBaseRelease()
         {
             HotUpdateArtifactValidationReport report = _fixture.Validator.Validate(_fixture.Context);
 
@@ -165,6 +165,7 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
             private readonly string _root = Path.Combine(Path.GetTempPath(), "StellarHotUpdateArtifactValidator", Guid.NewGuid().ToString("N"));
             private readonly string _baseReleaseRoot;
             private readonly string _sourceMetadataPath;
+            private readonly string _secondSourceMetadataPath;
             private readonly string _packageOutputPath;
 
             public readonly string AssetsRoot;
@@ -179,6 +180,7 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
                 AssetsRoot = Path.Combine(_root, "Assets");
                 _baseReleaseRoot = Path.Combine(_root, "BaseReleases");
                 _sourceMetadataPath = Path.Combine(_root, "Source", "mscorlib.dll");
+                _secondSourceMetadataPath = Path.Combine(_root, "Source", "System.dll");
                 _packageOutputPath = Path.Combine(_root, "YooAsset", "Windows");
                 Directory.CreateDirectory(Path.GetDirectoryName(_sourceMetadataPath));
                 Directory.CreateDirectory(Path.Combine(AssetsRoot, "GameHotUpdate", "Manifest"));
@@ -188,6 +190,7 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
 
                 byte[] metadataBytes = { 1, 3, 3, 7 };
                 File.WriteAllBytes(_sourceMetadataPath, metadataBytes);
+                File.WriteAllBytes(_secondSourceMetadataPath, new byte[] { 2, 4, 6, 8 });
                 AotPath = Path.Combine(AssetsRoot, "GameHotUpdate", "Metadata", "mscorlib.dll.bytes");
                 File.WriteAllBytes(AotPath, metadataBytes);
 
@@ -202,7 +205,7 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
                     YooAssetVersion = "2.3.19",
                     ScriptingBackend = ScriptingImplementation.IL2CPP,
                     GitCommit = "test-commit",
-                    AotMetadataSourcePaths = new[] { _sourceMetadataPath }
+                    AotMetadataSourcePaths = new[] { _sourceMetadataPath, _secondSourceMetadataPath }
                 });
                 var requirements = new HotUpdateBaseReleaseRequirements
                 {

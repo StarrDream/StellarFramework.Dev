@@ -188,7 +188,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
 
             await _client.PutTextAsync(
                 key,
-                request.PackageVersion + "\n",
+                request.PackageVersion,
                 currentInfo?.ETag,
                 currentInfo == null,
                 cancellationToken);

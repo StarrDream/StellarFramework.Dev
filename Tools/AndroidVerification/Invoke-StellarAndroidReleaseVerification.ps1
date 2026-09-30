@@ -8,6 +8,7 @@ param(
     [switch] $HotUpdate,
     [int] $CdnPort = 18743,
     [string] $PythonExe = 'python.exe',
+    [string] $ReleaseGateEvidencePath = '',
     [switch] $SkipBuild,
     [switch] $ForceBatchModeBuild,
     [switch] $KeepEmulator
@@ -15,8 +16,20 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\Common.ps1"
+$script:UnitySkillsUrl = $UnitySkillsUrl.TrimEnd('/')
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+if (-not [string]::IsNullOrWhiteSpace($ReleaseGateEvidencePath))
+{
+    if ([IO.Path]::IsPathRooted($ReleaseGateEvidencePath))
+    {
+        $ReleaseGateEvidencePath = [IO.Path]::GetFullPath($ReleaseGateEvidencePath)
+    }
+    else
+    {
+        $ReleaseGateEvidencePath = [IO.Path]::GetFullPath((Join-Path $projectRoot $ReleaseGateEvidencePath))
+    }
+}
 $defaultApkPath = Join-Path $projectRoot 'Builds\AndroidVerification\StellarFramework-ArchitectureDemo-x86_64-release.apk'
 $hotUpdateDefaultApkPath = Join-Path $projectRoot 'Builds\AndroidVerification\StellarFramework-HotUpdate-x86_64-release.apk'
 $selectedDefaultApkPath = if ($HotUpdate) { $hotUpdateDefaultApkPath } else { $defaultApkPath }
@@ -78,21 +91,30 @@ function Get-StellarUnitySkillsHealth
 {
     param([Parameter(Mandatory = $true)] [string] $BaseUrl)
 
-    try
+    $configured = [Uri]$BaseUrl
+    $candidatePorts = @($configured.Port) + @(8090..8110)
+    $seenPorts = @{}
+    foreach ($port in $candidatePorts)
     {
-        $uri = $BaseUrl.TrimEnd('/') + '/health'
-        $health = Invoke-RestMethod -Uri $uri -Method Get -TimeoutSec 3
-        if ($health.status -ne 'ok' -or $health.projectName -ne 'StellarFramework')
+        if ($seenPorts.ContainsKey([int]$port)) { continue }
+        $seenPorts[[int]$port] = $true
+        $candidate = '{0}://{1}:{2}' -f $configured.Scheme, $configured.Host, $port
+        try
         {
-            return $null
+            $health = Invoke-RestMethod -Uri ($candidate + '/health') -Method Get -TimeoutSec 2
+            if ($health.status -eq 'ok' -and $health.projectName -eq 'StellarFramework')
+            {
+                $script:UnitySkillsUrl = $candidate
+                return $health
+            }
         }
+        catch
+        {
+            # UnitySkills may reacquire its local listener on another port after an Editor reload.
+        }
+    }
 
-        return $health
-    }
-    catch
-    {
-        return $null
-    }
+    return $null
 }
 
 function Read-StellarBuildState
@@ -450,6 +472,7 @@ try
         if (-not $ForceBatchModeBuild -and $ApkPath -eq $selectedDefaultApkPath)
         {
             $health = Get-StellarUnitySkillsHealth -BaseUrl $UnitySkillsUrl
+            if ($null -ne $health) { $UnitySkillsUrl = $script:UnitySkillsUrl }
         }
 
         if ($HotUpdate) {
@@ -555,7 +578,7 @@ try
     if ($HotUpdate -and -not $startedEmulator) {
         $existingMemoryKilobytes = Get-StellarAndroidMemoryKilobytes -Serial $existingSerial
         if ($existingMemoryKilobytes -lt (3584L * 1024L)) {
-            throw "The running StellarFramework_API35 emulator has only $([Math]::Floor($existingMemoryKilobytes / 1024)) MB RAM. Stop that AVD and rerun -HotUpdate so the existing launcher can start it with 4096 MB."
+            throw "The configured Android device '$existingSerial' has only $([Math]::Floor($existingMemoryKilobytes / 1024)) MB RAM. The HotUpdate gate requires at least 3584 MB; use a device with sufficient memory or start StellarFramework_API35 with 4096 MB."
         }
     }
 
@@ -705,7 +728,17 @@ finally
     }
 
     $pipelineResult.completedAt = [DateTimeOffset]::Now.ToString('o')
-    $pipelineResult | ConvertTo-Json -Depth 6 | Out-File -FilePath $pipelineResultPath -Encoding utf8
+    $pipelineJson = $pipelineResult | ConvertTo-Json -Depth 8
+    [IO.File]::WriteAllText($pipelineResultPath, $pipelineJson, [Text.UTF8Encoding]::new($false))
+    if (-not [string]::IsNullOrWhiteSpace($ReleaseGateEvidencePath))
+    {
+        $evidenceDirectory = [IO.Path]::GetDirectoryName($ReleaseGateEvidencePath)
+        if (-not [string]::IsNullOrWhiteSpace($evidenceDirectory))
+        {
+            [IO.Directory]::CreateDirectory($evidenceDirectory) | Out-Null
+        }
+        [IO.File]::WriteAllText($ReleaseGateEvidencePath, $pipelineJson, [Text.UTF8Encoding]::new($false))
+    }
 
     if ($pipelineResult.status -ne 'PASS')
     {

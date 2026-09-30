@@ -49,9 +49,9 @@ Preflight → ClassifyChanges → CompileHotUpdate → ExportHybridCLRAssets
 
 ## Build 与 Validation Adapter
 
-- `HybridCLRHotUpdateBuildAdapter` 复用 `HybridCLRHotUpdateAssetExporter`，由选定的 BaseRelease 提供目标平台 AOT metadata。
-- `YooAssetHotUpdateBuildAdapter` 调用 YooAsset Editor Build，校验输出目录、PackageVersion、Bundle 和全部 Manifest 文件。
-- `HotUpdateArtifactValidator` 检查 Manifest、DLL SHA256、入口类型/方法、AOT metadata、目标平台和 PackageVersion，并验证构建产物属于选定 BaseRelease。
+- `HybridCLRHotUpdateBuildAdapter` 复用 `HybridCLRHotUpdateAssetExporter`，按 `HotUpdateSettings.AotMetadataKeys` 从选定的 BaseRelease 筛选目标平台 AOT metadata；缺少任一配置项时构建失败。
+- `YooAssetHotUpdateBuildAdapter` 调用 YooAsset Editor Build，校验输出目录、PackageVersion、Bundle 和全部 Manifest 文件。上传清单会排除 `OutputCache` 与 `OutputCache.manifest`；它们仅供下一次 Editor 增量构建使用，不是客户端运行资源。
+- `HotUpdateArtifactValidator` 检查 Manifest、DLL SHA256、入口类型/方法、Manifest 所选 AOT metadata、目标平台和 PackageVersion，并逐项对照所选 BaseRelease 的 SHA256。
 - Adapter 只在 Editor 发布程序集，HotUpdate Runtime 继续由既有 Bootstrap/YooAsset/ResKit/HybridCLR 链路消费。
 
 ## Git Provenance
@@ -85,6 +85,8 @@ Rollback 校验从 Release Record 查找历史 PackageVersion、JSON Manifest �
 ## History 与 Rollback
 
 `HotUpdateReleaseHistoryRepository` 在 `BuildArtifacts/HotUpdate/ReleaseHistory` 保存每个 Release JSON 和独立事件 JSON。写文件先写临时文件再原子替换；ReleaseId 和所有远端相对路径通过安全校验。
+
+Release 创建时间以 ISO-8601 UTC 字符串持久化，因为 Unity `JsonUtility` 不会序列化 `DateTime` 字段。兼容旧记录时，Repository 优先使用不可变 `Activated` 事件的文件时间恢复顺序；只有没有对应事件时才使用 Release JSON 文件时间。
 
 Rollback 的执行顺序：
 

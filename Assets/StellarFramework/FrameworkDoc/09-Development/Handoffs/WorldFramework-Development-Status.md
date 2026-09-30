@@ -22,9 +22,9 @@ P12 — Performance / Release Seal (sealing evidence):
 - P12 relevant non-benchmark release set = **401/401 PASS** = 337 frozen P0-P11 behavior + 27 Boundary + 7 Metadata + 30 Standalone.
 - P12 selected benchmark release set = **13/13 PASS**.
 - Combined selected P12 seal evidence = **414/414 PASS, 0 failed, 0 skipped**.
-- **P12 Performance / Release Seal = FROZEN / PASS. P13 is now ACTIVE.**
+- **P12 Performance / Release Seal = FROZEN / PASS. Historical milestone completed.**
 
-P13 — Example Productization / Localization / Final Clean Seal (active):
+P13 — Example Productization / Localization / Final Clean Seal (historical milestone, completed):
 
 - LocalizationKit.Core 已建立为独立 `foundation / data`：LocaleId/LocalizationKey、不可变 Table/Catalog、显式 fallback、lookup result、locale change event、named formatter；Core 零 Unity/Settings/UIKit/SaveKit 依赖，无 runtime reflection/assembly scan。
 - LocalizationKit Core fresh tests **15/15 PASS**；SettingsAdapter + UnityUGUIAdapter + Editor Validator **12/12 PASS**；LocalizationKit Sample EditMode **5/5 PASS**。

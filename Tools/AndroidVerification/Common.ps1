@@ -20,12 +20,28 @@ function Assert-StellarAndroidEnvironment {
         throw "ADB not found: $script:StellarAdb"
     }
 
-    if (-not (Test-Path $script:StellarEmulator)) {
-        throw "Android Emulator not found: $script:StellarEmulator"
-    }
-
     if ([string]::IsNullOrWhiteSpace($script:StellarAapt) -or -not (Test-Path $script:StellarAapt)) {
         throw "Android aapt not found below: $(Join-Path $script:StellarAndroidSdkRoot 'build-tools')"
+    }
+
+    $configuredDeviceSerial = $env:STELLAR_ANDROID_DEVICE_SERIAL
+    if (-not [string]::IsNullOrWhiteSpace($configuredDeviceSerial)) {
+        $deviceFound = $false
+        foreach ($line in (& $script:StellarAdb devices)) {
+            $parts = $line -split '\s+'
+            if ($parts.Count -ge 2 -and $parts[0] -eq $configuredDeviceSerial -and $parts[1] -eq 'device') {
+                $deviceFound = $true
+                break
+            }
+        }
+        if (-not $deviceFound) {
+            throw "Configured Android device '$configuredDeviceSerial' is not online in ADB."
+        }
+        return
+    }
+
+    if (-not (Test-Path $script:StellarEmulator)) {
+        throw "Android Emulator not found: $script:StellarEmulator"
     }
 
     $installedAvds = @(& $script:StellarEmulator -list-avds)
@@ -36,6 +52,10 @@ function Assert-StellarAndroidEnvironment {
 
 function Get-StellarEmulatorSerial {
     Assert-StellarAndroidEnvironment
+    if (-not [string]::IsNullOrWhiteSpace($env:STELLAR_ANDROID_DEVICE_SERIAL)) {
+        return $env:STELLAR_ANDROID_DEVICE_SERIAL.Trim()
+    }
+
     $lines = & $script:StellarAdb devices
     foreach ($line in $lines) {
         if ($line -notmatch '^(emulator-\d+)\s+device$') {

@@ -10,6 +10,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+$script:UnitySkillsUrl = $UnitySkillsUrl.TrimEnd('/')
 if ([System.IO.Path]::IsPathRooted($EvidencePath))
 {
     $resolvedEvidencePath = [System.IO.Path]::GetFullPath($EvidencePath)
@@ -43,7 +44,8 @@ function Invoke-StellarUnitySkill
         [int] $RequestTimeoutSeconds = 30
     )
 
-    $uri = $UnitySkillsUrl.TrimEnd('/') + '/skill/' + $SkillName
+    $baseUrl = Get-StellarUnitySkillsEndpoint
+    $uri = $baseUrl + '/skill/' + $SkillName
     $jsonBody = $Body | ConvertTo-Json -Depth 12 -Compress
     $response = Invoke-RestMethod -Uri $uri -Method Post -ContentType 'application/json' `
         -Body $jsonBody -TimeoutSec $RequestTimeoutSeconds
@@ -57,6 +59,85 @@ function Invoke-StellarUnitySkill
     return $response.result
 }
 
+function Get-StellarUnitySkillsEndpoint
+{
+    $configured = [Uri]$script:UnitySkillsUrl
+    $candidatePorts = @($configured.Port) + @(8090..8110)
+    $seenPorts = @{}
+    foreach ($port in $candidatePorts)
+    {
+        if ($seenPorts.ContainsKey([int]$port)) { continue }
+        $seenPorts[[int]$port] = $true
+        $candidate = '{0}://{1}:{2}' -f $configured.Scheme, $configured.Host, $port
+        try
+        {
+            $health = Invoke-RestMethod -Uri ($candidate + '/health') -Method Get -TimeoutSec 2
+            if ($health.status -eq 'ok' -and $health.projectName -eq 'StellarFramework')
+            {
+                $script:UnitySkillsUrl = $candidate
+                return $candidate
+            }
+        }
+        catch
+        {
+            # UnitySkills may release and reacquire its listener while PlayMode starts.
+        }
+    }
+
+    throw "UnitySkills for StellarFramework was not reachable on ports 8090-8110 (last known URL '$script:UnitySkillsUrl')."
+}
+
+function Find-StellarRecentTestJob
+{
+    param(
+        [Parameter(Mandatory = $true)] [long] $StartedAtUnix,
+        [Parameter(Mandatory = $true)] [int] $TimeoutSeconds
+    )
+
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    while ([DateTime]::UtcNow -lt $deadline)
+    {
+        try
+        {
+            $baseUrl = Get-StellarUnitySkillsEndpoint
+            $jobs = Invoke-RestMethod -Uri ($baseUrl + '/jobs') -Method Get -TimeoutSec 5
+            $recent = @($jobs.jobs | Where-Object {
+                $_.kind -eq 'test' -and [long]$_.startedAt -ge ($StartedAtUnix - 5)
+            } | Sort-Object -Property startedAt -Descending)
+            if ($recent.Count -gt 0) { return $recent[0] }
+        }
+        catch
+        {
+            # The test job can outlive the REST listener that accepted it.
+        }
+
+        Start-Sleep -Seconds 2
+    }
+
+    return $null
+}
+
+function Test-StellarTransientUnitySkillsError
+{
+    param([Parameter(Mandatory = $true)] [System.Management.Automation.ErrorRecord] $ErrorRecord)
+    $exception = $ErrorRecord.Exception
+    while ($exception -ne $null)
+    {
+        if ($exception -is [System.Net.WebException] -or
+            $exception -is [System.TimeoutException] -or
+            $exception -is [System.OperationCanceledException] -or
+            $exception -is [System.Net.Http.HttpRequestException] -or
+            $exception -is [System.Net.Sockets.SocketException])
+        {
+            return $true
+        }
+        $exception = $exception.InnerException
+    }
+
+    $message = @($ErrorRecord.Exception.Message, $ErrorRecord.ErrorDetails.Message) -join ' '
+    return $message -match '(?i)\b503\b|timed out|timeout|connection.*closed|actively refused|request.*aborted|operation was canceled|not reachable on ports'
+}
+
 function Wait-StellarUnitySkillsJob
 {
     param(
@@ -68,13 +149,22 @@ function Wait-StellarUnitySkillsJob
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     while ([DateTime]::UtcNow -lt $deadline)
     {
-        if ($SkillName -eq 'test_discover_get_result')
+        try
         {
-            $job = Invoke-StellarUnitySkill -SkillName $SkillName -Body @{ jobId = $JobId; limit = 5000 }
+            if ($SkillName -eq 'test_discover_get_result')
+            {
+                $job = Invoke-StellarUnitySkill -SkillName $SkillName -Body @{ jobId = $JobId; limit = 5000 } -RequestTimeoutSeconds 5
+            }
+            else
+            {
+                $job = Invoke-StellarUnitySkill -SkillName $SkillName -Body @{ jobId = $JobId } -RequestTimeoutSeconds 5
+            }
         }
-        else
+        catch
         {
-            $job = Invoke-StellarUnitySkill -SkillName $SkillName -Body @{ jobId = $JobId }
+            if (-not (Test-StellarTransientUnitySkillsError -ErrorRecord $_)) { throw }
+            Start-Sleep -Seconds 2
+            continue
         }
 
         if ($job.status -eq 'completed')
@@ -98,6 +188,7 @@ function Save-StellarGateEvidence
 {
     param([Parameter(Mandatory = $true)] [System.Collections.IDictionary] $Value)
 
+    $Value.unitySkillsUrl = $script:UnitySkillsUrl
     $directory = [System.IO.Path]::GetDirectoryName($resolvedEvidencePath)
     if (-not [string]::IsNullOrWhiteSpace($directory))
     {
@@ -112,9 +203,12 @@ function Save-StellarGateEvidence
         [System.Text.UTF8Encoding]::new($false))
 }
 
+Save-StellarGateEvidence -Value $evidence
+
 try
 {
-    $health = Invoke-RestMethod -Uri ($UnitySkillsUrl.TrimEnd('/') + '/health') -Method Get -TimeoutSec 5
+    $UnitySkillsUrl = Get-StellarUnitySkillsEndpoint
+    $health = Invoke-RestMethod -Uri ($UnitySkillsUrl + '/health') -Method Get -TimeoutSec 5
     if ($health.status -ne 'ok' -or $health.projectName -ne 'StellarFramework')
     {
         throw "UnitySkills is not serving StellarFramework at '$UnitySkillsUrl'."
@@ -199,10 +293,27 @@ try
         gateCategories = @($gate[0].categories)
     }
 
-    $testStart = Invoke-StellarUnitySkill -SkillName 'test_run_by_name' `
-        -Body @{ testName = $gateFullName; testMode = 'PlayMode' }
+    $testStartedAt = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $testJobId = $null
+    try
+    {
+        $testStart = Invoke-StellarUnitySkill -SkillName 'test_run_by_name' `
+            -Body @{ testName = $gateFullName; testMode = 'PlayMode' } -RequestTimeoutSeconds 8
+        $testJobId = $testStart.jobId
+    }
+    catch
+    {
+        if (-not (Test-StellarTransientUnitySkillsError -ErrorRecord $_)) { throw }
+        $recentJob = Find-StellarRecentTestJob -StartedAtUnix $testStartedAt -TimeoutSeconds 120
+        if ($recentJob -eq $null)
+        {
+            throw "PlayMode test start response was interrupted and no corresponding Unity test job appeared. $($_.Exception.Message)"
+        }
+        $testJobId = $recentJob.jobId
+    }
+
     $test = Wait-StellarUnitySkillsJob -SkillName 'test_get_result' `
-        -JobId $testStart.jobId -TimeoutSeconds ($TimeoutMinutes * 60)
+        -JobId $testJobId -TimeoutSeconds ($TimeoutMinutes * 60)
     $evidence.test = $test
 
     if ($test.totalTests -ne 1 -or $test.passedTests -ne 1 -or

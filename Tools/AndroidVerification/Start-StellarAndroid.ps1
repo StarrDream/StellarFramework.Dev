@@ -46,7 +46,11 @@ if ([string]::IsNullOrWhiteSpace($serial)) {
     Write-Host "Started $($script:StellarAvdName) as $serial (PID=$($process.Id), RAM=${MemoryMegabytes}MB)."
     Write-Host "Emulator logs: $stdoutLog ; $stderrLog"
 } else {
-    Write-Host "$($script:StellarAvdName) is already running as $serial."
+    if (-not [string]::IsNullOrWhiteSpace($env:STELLAR_ANDROID_DEVICE_SERIAL)) {
+        Write-Host "Using configured Android device $serial."
+    } else {
+        Write-Host "$($script:StellarAvdName) is already running as $serial."
+    }
 }
 
 Wait-StellarAndroidBoot -Serial $serial -TimeoutSeconds $TimeoutSeconds

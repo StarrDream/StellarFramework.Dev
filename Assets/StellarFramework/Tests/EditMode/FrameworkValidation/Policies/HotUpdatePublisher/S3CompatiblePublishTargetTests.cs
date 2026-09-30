@@ -94,7 +94,7 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
                 ExpectedCurrentPackageVersion = "2.0.0"
             };
             _target.RollbackAsync(rollback, CancellationToken.None).GetAwaiter().GetResult();
-            Assert.That(Encoding.UTF8.GetString(_store.Read("hotupdate/Development/PackageVersion")), Is.EqualTo("1.9.0\n"));
+            Assert.That(Encoding.UTF8.GetString(_store.Read("hotupdate/Development/PackageVersion")), Is.EqualTo("1.9.0"));
         }
 
         [Test]

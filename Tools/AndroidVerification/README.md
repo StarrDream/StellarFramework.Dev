@@ -5,9 +5,9 @@ Dedicated Android emulator automation for StellarFramework release validation.
 ## First-time setup
 
 1. Install Unity **2022.3.62f3c1** with the **Android Build Support**, **Android SDK & NDK Tools**, and **OpenJDK** modules. Unity uses its bundled SDK/JDK to build the APK.
-2. Install Android command-line tools and an Android Emulator SDK into a separate SDK root. The scripts default to `C:\Android\Sdk`; override it for the current PowerShell session with `$env:STELLAR_ANDROID_SDK_ROOT = 'D:\Android\Sdk'`.
+2. Install Android command-line tools into an SDK root containing `platform-tools/adb.exe` and `build-tools/*/aapt.exe`. The scripts default to `C:\Android\Sdk`; override it for the current PowerShell session with `$env:STELLAR_ANDROID_SDK_ROOT = 'D:\Android\Sdk'`.
 3. In SDK Manager, install `platform-tools`, `emulator`, `platforms;android-35`, `system-images;android-35;google_apis;x86_64`, and `build-tools;35.0.0`. The API 35 build-tools package provides `aapt` for reading APK metadata.
-4. Create an AVD named `StellarFramework_API35` using the `android-35;google_apis;x86_64` image. The included launcher addresses this AVD by name, so other connected devices are left alone.
+4. Create an AVD named `StellarFramework_API35` using the `android-35;google_apis;x86_64` image for the default automated setup. The launcher addresses this AVD by name, so other connected devices are left alone. A running MuMu instance or another Android device can be selected explicitly instead; see **Use a connected device** below.
 5. Enable CPU virtualization in firmware and the Windows Hypervisor Platform feature, then restart Windows if the feature installer requests it. The standard environment check requires hardware acceleration; software CPU emulation is too slow and is not the normal release-gate configuration.
 6. Run the environment check below. It verifies `adb`, `emulator`, `aapt`, the AVD, and emulator acceleration before running a release test.
 
@@ -29,7 +29,19 @@ Open the resulting AVD configuration and set its RAM to **4096 MB** for the HotU
 - JDK for Android CLI: Microsoft OpenJDK 17
 - Unity 2022.3 keeps using its own embedded JDK/SDK unless its External Tools settings are changed manually.
 
-The scripts intentionally identify the target emulator by **AVD name**, not by “first ADB device”, so connected PICO/phones/other emulators are not targeted accidentally.
+The default scripts identify the target emulator by **AVD name**, not by “first ADB device”, so connected PICO/phones/other emulators are not targeted accidentally. An external device is used only when its exact ADB serial is supplied explicitly.
+
+## Use a connected device
+
+Set the SDK root and the exact serial shown by `adb devices`. This mode needs `adb` and `aapt`; it does not require the Android Emulator binary or an installed AVD.
+
+```powershell
+$env:STELLAR_ANDROID_SDK_ROOT = 'D:\Program Files\UnityEditor\2022.3.62f3c1\Editor\Data\PlaybackEngines\AndroidPlayer\SDK'
+$env:STELLAR_ANDROID_DEVICE_SERIAL = '127.0.0.1:16416'
+powershell -ExecutionPolicy Bypass -File .\Tools\AndroidVerification\Invoke-StellarAndroidReleaseVerification.ps1 -HotUpdate
+```
+
+The HotUpdate profile checks that the configured device is online and reports at least 3584 MB of visible RAM. It leaves a configured external device running after the gate; the script removes only the `adb reverse` mapping it created.
 
 ## Validate environment
 
@@ -117,7 +129,7 @@ This reuses the Android Release pipeline and smoke runner. It requires the Unity
 
 The pipeline serves the package from a local Python standard-library HTTP server bound only to `127.0.0.1`, then uses `adb reverse` to connect the emulator to it. It builds a non-Development IL2CPP APK and passes CDN/package/version values through Android launch Intent extras. The app must prove a cold download and a force-stop/restart cache hit. During each HotUpdate launch, the smoke runner waits for the Player's `BootstrapEntered` marker; it uses UIAutomator to find Android's accessible startup prompt buttons and selects **Wait** for `android:id/aerr_wait` when a system app is unresponsive. It records the number of handled system prompts and fails if the Player bootstrap does not appear within the bounded startup window. Each run emits the complete structured result as ordered, 512-character Base64 log chunks because Unity's Android logger truncates long messages; the smoke runner requires every chunk exactly once, reconstructs and parses the JSON, then asserts Manifest target Android, ResKit loads, SHA match, successful AOT metadata load, loaded `HotUpdate` Assembly, entry execution marker, and 0 redownloads after restart.
 
-The HotUpdate profile starts the existing `StellarFramework_API35` AVD with 4096 MB RAM because the Android Release IL2CPP player and API 35 Google APIs image exceeded the prior 2048 MB test configuration. A manually running AVD is reused only when Android reports at least 3584 MB in `/proc/meminfo`; otherwise the pipeline stops before install and asks for that same AVD to be restarted through the existing helper. The ordinary smoke profile keeps its 2048 MB default.
+Without an explicit device serial, the HotUpdate profile starts the existing `StellarFramework_API35` AVD with 4096 MB RAM. A manually running AVD is reused only when Android reports at least 3584 MB in `/proc/meminfo`; otherwise the pipeline stops before install and asks for that same AVD to be restarted through the existing helper. With an explicit device serial, it uses only that device and applies the same 3584 MB check. The ordinary smoke profile keeps its 2048 MB default.
 
 Evidence is written under `Tools/AndroidVerification/Results/<run-id>/`, including both app logcats, full logcats, screenshot, `result.json`, `pipeline-result.json`, build state references, and CDN request JSONL. Android runtime logs include `[StellarHotUpdateVerificationStage]` milestones so a stalled updater can be located without treating a startup message as PASS; only the final structured result satisfies the smoke gate. Use `-CdnPort` or `-PythonExe` when the local default is unavailable. `-SkipBuild` is intentionally unsupported with `-HotUpdate` because the gate must regenerate target artifacts and build a fresh Release APK.
 

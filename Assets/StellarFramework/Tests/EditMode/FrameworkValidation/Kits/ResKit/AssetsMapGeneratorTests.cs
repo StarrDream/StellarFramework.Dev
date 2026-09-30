@@ -65,6 +65,10 @@ namespace StellarFramework.Tests.FrameworkValidation
                 "Assets/StellarFramework/Runtime/Foo.cs"), Is.False);
             Assert.That(AssetsMapGenerator.MayAffectGeneratedMap(
                 "Assets/Game/Prefabs/Hero.prefab"), Is.True);
+            Assert.That(AssetsMapGenerator.MayAffectGeneratedMap(
+                "Assets/HotUpdatePublisherConsumerE2E/Generated/Code/HotUpdate.dll.bytes"), Is.False);
+            Assert.That(AssetsMapGenerator.MayAffectGeneratedMap(
+                "Assets/HotUpdatePublisherConsumerE2E/Content/HotUpdateBehavior.txt"), Is.True);
         }
 
         [Test]

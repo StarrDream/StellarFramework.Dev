@@ -49,11 +49,22 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             using (SHA256 sha256 = SHA256.Create())
             using (FileStream stream = File.OpenRead(path))
             {
-                byte[] hash = sha256.ComputeHash(stream);
-                var builder = new StringBuilder(hash.Length * 2);
-                for (int index = 0; index < hash.Length; index++) builder.Append(hash[index].ToString("x2"));
-                return builder.ToString();
+                return ToHex(sha256.ComputeHash(stream));
             }
+        }
+
+        internal static string ComputeSha256(byte[] content)
+        {
+            if (content == null) throw new ArgumentNullException(nameof(content));
+            using (SHA256 sha256 = SHA256.Create())
+                return ToHex(sha256.ComputeHash(content));
+        }
+
+        private static string ToHex(byte[] hash)
+        {
+            var builder = new StringBuilder(hash.Length * 2);
+            for (int index = 0; index < hash.Length; index++) builder.Append(hash[index].ToString("x2"));
+            return builder.ToString();
         }
     }
 

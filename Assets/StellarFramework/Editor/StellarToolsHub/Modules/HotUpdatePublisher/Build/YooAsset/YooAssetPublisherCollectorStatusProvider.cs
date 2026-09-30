@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using StellarFramework.HybridCLR;
 using UnityEditor;
 using UnityEngine;
 using YooAsset.Editor;
@@ -33,6 +34,12 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                         $"缺少 Package '{packageName}' 的 YooAsset Collector。点击“配置 / 创建推荐 YooAsset Collector”会新增独立业务 Package，并保留 Verification 配置。");
                 }
 
+                if (!package.EnableAddressable)
+                {
+                    return new HotUpdatePublisherCollectorStatus(false,
+                        $"业务 Package '{packageName}' 未启用 Addressable。Publisher 的运行时按 AddressByFileName 地址加载资源；请在 YooAsset Collector 中启用该选项，然后重新检查。未启用时构建产物不会包含可用资源地址。");
+                }
+
                 int groupCount = package.Groups?.Count ?? 0;
                 int collectorCount = package.Groups?.Where(group => group != null)
                     .Sum(group => group.Collectors?.Count ?? 0) ?? 0;
@@ -47,15 +54,13 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                     return new HotUpdatePublisherCollectorStatus(false,
                         $"HotUpdate Assets Root '{outputRoot}' 无效。请设置 Assets/ 下的安全目录后再检查 Collector。");
 
-                string[] requiredPaths =
+                string[] metadataPaths = HotUpdateAotMetadataSelection.GetGeneratedAssetPaths(
+                    outputRoot, HotUpdateSettings.LoadOrCreateDefault().AotMetadataKeys);
+                string[] requiredPaths = new[]
                 {
                     outputRoot + "/Manifest/HotUpdateManifest.json",
-                    outputRoot + "/Code/HotUpdate.dll.bytes",
-                    outputRoot + "/Metadata/mscorlib.dll.bytes",
-                    outputRoot + "/Metadata/System.dll.bytes",
-                    outputRoot + "/Metadata/System.Core.dll.bytes",
-                    outputRoot + "/Metadata/UnityEngine.CoreModule.dll.bytes"
-                };
+                    outputRoot + "/Code/HotUpdate.dll.bytes"
+                }.Concat(metadataPaths).ToArray();
                 var configuredPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (AssetBundleCollectorGroup group in package.Groups)
                 {

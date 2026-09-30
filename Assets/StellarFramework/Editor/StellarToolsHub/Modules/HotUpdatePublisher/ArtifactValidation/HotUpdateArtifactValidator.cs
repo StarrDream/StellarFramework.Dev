@@ -205,9 +205,9 @@ namespace StellarFramework.Editor.HotUpdatePublisher
 
             HotUpdateManifest manifest = ReadManifestForAot(context, report);
             if (manifest == null) return;
-            if (manifest.aotMetadataKeys == null || manifest.aotMetadataKeys.Count != expectedHashes.Count)
+            if (manifest.aotMetadataKeys == null || manifest.aotMetadataKeys.Count == 0)
             {
-                report.AddError($"Manifest AOT metadata count does not match selected BaseRelease '{release.BaseAppVersion}'.");
+                report.AddError("Manifest must select at least one AOT metadata asset from the selected BaseRelease.");
                 return;
             }
 

@@ -2374,3 +2374,25 @@ Current active milestone is **P7 — Feature / POI + PlacementKit**. P7 follows 
 - P26 is not closed. `BuildArtifacts/HotUpdate/BaseReleases` has no formal BaseRelease yet. Dry Run, Build & Publish, remote verification, PackageVersion publication, and Android client E2E remain outstanding. Do not classify missing evidence as PASS. The previous machine's UnitySkills request queue became stuck after the Android Player setting reload (`mainThreadIdleMs > 170000`, queued 2, pending 4 despite Editor compile/update idle); it was treated as `TOOLING EVIDENCE GAP`. On the new machine, reopen the project, confirm UnitySkills works on its configured port, verify Android IL2CPP/x86_64 survived checkout, and rerun the formal Create Android Base Release entry only after the Editor is responsive.
 - Verified evidence before handoff: Publisher Collector diagnostics focused tests `1ecb5989` and `4ff54268`, each **4/4 PASS**. Earlier P21 regression evidence remains recorded above. No reset, clean, force checkout, commit before this handoff request, or push had been performed before the current user instruction.
 - Git handoff completed: full workspace checkpoint commit `858600fc921ea3d6227ed94c10a6c911633be83e` (`chore: checkpoint workspace for computer handoff`) contains **237 files changed**. `git push origin main` succeeded (`7ab39f0..858600f main -> main`), and the local `origin/main` tracking ref matched the commit. The worktree was clean immediately after the push. A separate read-only `git ls-remote` check could not authenticate through Windows Schannel (`SEC_E_NO_CREDENTIALS`); this does not change the successful push result. This handoff status note is being committed and pushed as a follow-up documentation commit.
+
+
+### 2026-09-29 — Three Repository Development Model and Current Closure Plan
+
+- Repository structure is now fixed:
+  - `StellarFramework.Dev`: only development source.
+  - `StellarFramework`: General user release repository.
+  - `StellarFramework.Extensions`: Extension user release repository.
+- Release repositories must not become development entry points. Changes flow through Dev -> RepositoryPublisher -> Release repositories.
+- P0-P13 framework milestones are treated as frozen historical milestones. Future changes must open a new milestone instead of modifying old completion records.
+
+### 2026-09-29 — Documentation cleanup checkpoint
+
+- Removed ambiguity between historical milestone notes and current execution state. P0-P13 records remain historical evidence only.
+- Current execution tracking is now maintained by `Assets/StellarFramework/FrameworkDoc/09-Development/Handoffs/2026-09-29-Current-Development-Status.md`.
+- Open closure work is limited to three-repository release verification, Kit distribution audit, and HotUpdate production closure.
+- Current open closure work:
+  1. Verify three repository release completeness through fresh Unity import.
+  2. Audit Kit source/Catalog/Manifest/Sample/Test/Documentation consistency.
+  3. Complete HotUpdate production closure: BaseRelease, version generation, update client, rollback, Android E2E.
+- New current status document:
+  `FrameworkDoc/09-Development/Handoffs/2026-09-29-Current-Development-Status.md`

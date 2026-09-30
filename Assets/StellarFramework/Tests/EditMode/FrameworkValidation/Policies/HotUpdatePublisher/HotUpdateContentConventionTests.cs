@@ -36,6 +36,43 @@ namespace StellarFramework.Tests.FrameworkValidation.Policies.HotUpdatePublisher
         }
 
         [Test]
+        public void ProjectDocumentationIsClassifiedAsEditorOnly()
+        {
+            Assert.That(
+                HotUpdateDevelopmentConvention.IsEditorOnlyPath("Assets/docs/chatgptwebmemory.md"),
+                Is.True);
+            Assert.That(
+                HotUpdateDevelopmentConvention.ClassifyLayer("Assets/docs/chatgptwebmemory.md"),
+                Is.EqualTo(HotUpdateProjectLayer.EditorOnly));
+        }
+
+        [Test]
+        public void PublisherConsumerE2EContentIsRecognizedAsRemoteContent()
+        {
+            Assert.That(
+                HotUpdateDevelopmentConvention.IsRemoteContentPath(
+                    "Assets/HotUpdatePublisherConsumerE2E/Content/HotUpdateBehavior.txt"),
+                Is.True);
+            Assert.That(
+                HotUpdateDevelopmentConvention.ClassifyLayer(
+                    "Assets/HotUpdatePublisherConsumerE2E/Content/HotUpdateBehavior.txt"),
+                Is.EqualTo(HotUpdateProjectLayer.RemoteContent));
+        }
+
+        [Test]
+        public void PublisherConsumerE2EGeneratedPayloadIsRecognizedAsRemoteContent()
+        {
+            Assert.That(
+                HotUpdateDevelopmentConvention.IsRemoteContentPath(
+                    "Assets/HotUpdatePublisherConsumerE2E/Generated/Code/HotUpdate.dll.bytes"),
+                Is.True);
+            Assert.That(
+                HotUpdateDevelopmentConvention.ClassifyLayer(
+                    "Assets/HotUpdatePublisherConsumerE2E/Generated/Metadata/mscorlib.dll.bytes"),
+                Is.EqualTo(HotUpdateProjectLayer.RemoteContent));
+        }
+
+        [Test]
         public void BuiltInAndRemoteContentHaveDistinctBoundaries()
         {
             Assert.That(

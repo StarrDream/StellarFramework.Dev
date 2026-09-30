@@ -32,6 +32,7 @@ namespace StellarFramework.Editor.Modules
 
         private const string PrefsPrefix = "StellarFramework.HotUpdatePublisher.";
         private const string ProfilesPrefsSuffix = ".environmentProfiles";
+        private const string PendingPublishSessionKey = "StellarFramework.HotUpdatePublisher.PendingPublish";
         private const string CreateCollectorMenuPath = "Tools/StellarFramework/HotUpdate Publisher/Configure Recommended YooAsset Collector";
         private const string CreateAndroidBaseReleaseMenuPath = "Tools/StellarFramework/HotUpdate Publisher/Create Android Base Release";
         private static readonly string[] TabNames = { "Overview", "Changes", "Build", "Server", "History", "Advanced" };
@@ -57,6 +58,7 @@ namespace StellarFramework.Editor.Modules
         private readonly Dictionary<string, int> _rollbackSelections = new Dictionary<string, int>(StringComparer.Ordinal);
         private bool _isMajorHotPatch;
         private bool _operationBusy;
+        private bool _pendingResumeScheduled;
         private string _operationStatus = string.Empty;
         private string _operationError = string.Empty;
         private CancellationTokenSource _operationCancellation;
@@ -77,11 +79,15 @@ namespace StellarFramework.Editor.Modules
             _unitySkillsUrl = EditorPrefs.GetString(PrefsPrefix + suffix + ".unitySkillsUrl", _unitySkillsUrl);
             LoadEnvironmentProfiles(PrefsPrefix + suffix + ProfilesPrefsSuffix);
             RefreshHistory();
+            SchedulePendingPublishResume();
         }
 
         public override void OnDisable()
         {
-            _operationCancellation?.Cancel();
+            EditorApplication.update -= WaitForPendingPublishResume;
+            _pendingResumeScheduled = false;
+            if (!EditorApplication.isCompiling && !EditorApplication.isPlayingOrWillChangePlaymode)
+                _operationCancellation?.Cancel();
             SaveLocalInputs();
         }
 
@@ -578,7 +584,7 @@ namespace StellarFramework.Editor.Modules
             if (_operationBusy)
             {
                 if (GUILayout.Button("Cancel Current Operation", GUILayout.Height(24)))
-                    _operationCancellation?.Cancel();
+                    CancelCurrentOperation();
             }
             else if (!string.IsNullOrWhiteSpace(buildBlocker))
             {
@@ -960,15 +966,104 @@ namespace StellarFramework.Editor.Modules
                     "Build & Publish", "Cancel"))
                 return;
 
-            StartOperation("Building and publishing HotUpdate…", async token =>
+            StartOperation("Building and publishing HotUpdate…", token => RunPublishPipelineAsync(profile, null, token));
+        }
+
+        private async Task<string> RunPublishPipelineAsync(
+            HotUpdateEnvironmentProfile profile,
+            PendingPublishOperation pending,
+            CancellationToken cancellationToken)
+        {
+            if (pending != null) ApplyPendingPublishInputs(pending);
+            profile = pending == null ? profile : GetSelectedProfile();
+
+            HotUpdatePublishContext context = CreatePublishContext(
+                profile, out HotUpdateBaseReleaseRepository repository, out HotUpdateReleaseHistoryRepository history);
+            if (pending == null)
             {
-                HotUpdatePublishContext context = CreatePublishContext(profile, out HotUpdateBaseReleaseRepository repository, out HotUpdateReleaseHistoryRepository history);
-                HotUpdatePublisherWorkflow workflow = CreateWorkflow(context, profile, repository, history);
-                HotUpdatePublishResult result = await workflow.Pipeline.RunAsync(context, token);
-                if (!result.Success)
-                    throw new InvalidOperationException($"Publish failed at {result.FailedStage}: {result.Error}");
-                return $"Published {result.ReleaseRecord?.PackageName} {result.ReleaseRecord?.PackageVersion} to {profile.EnvironmentId}; ReleaseId={result.ReleaseRecord?.ReleaseId}.";
-            });
+                pending = PendingPublishOperation.FromContext(context, _selectedEnvironment, _isMajorHotPatch,
+                    _architecture, _releaseNotes, _hotUpdateAssetOutputRoot);
+                SessionState.SetString(PendingPublishSessionKey, JsonUtility.ToJson(pending));
+            }
+            else
+            {
+                if ((int)context.Platform != pending.platform)
+                    throw new InvalidOperationException("The active BuildTarget changed while the HotUpdate publish was interrupted. Resume it on the original target.");
+                context.ReleaseId = pending.releaseId;
+                context.PackageVersion = pending.packageVersion;
+                _packageVersion = pending.packageVersion;
+                SaveLocalInputs();
+            }
+
+            HotUpdatePublisherWorkflow workflow = CreateWorkflow(context, profile, repository, history);
+            HotUpdatePublishResult result = await workflow.Pipeline.RunAsync(context, cancellationToken);
+            if (!result.Success)
+                throw new InvalidOperationException($"Publish failed at {result.FailedStage}: {result.Error}");
+            return $"Published {result.ReleaseRecord?.PackageName} {result.ReleaseRecord?.PackageVersion} to {profile.EnvironmentId}; ReleaseId={result.ReleaseRecord?.ReleaseId}.";
+        }
+
+        private void SchedulePendingPublishResume()
+        {
+            if (_pendingResumeScheduled || string.IsNullOrWhiteSpace(SessionState.GetString(PendingPublishSessionKey, string.Empty)))
+                return;
+
+            _pendingResumeScheduled = true;
+            EditorApplication.update -= WaitForPendingPublishResume;
+            EditorApplication.update += WaitForPendingPublishResume;
+        }
+
+        private void WaitForPendingPublishResume()
+        {
+            if (EditorApplication.isCompiling || EditorApplication.isPlayingOrWillChangePlaymode) return;
+            EditorApplication.update -= WaitForPendingPublishResume;
+            _pendingResumeScheduled = false;
+            EditorApplication.delayCall += ResumePendingPublish;
+        }
+
+        private void ResumePendingPublish()
+        {
+            string json = SessionState.GetString(PendingPublishSessionKey, string.Empty);
+            if (string.IsNullOrWhiteSpace(json)) return;
+            PendingPublishOperation pending;
+            try
+            {
+                pending = JsonUtility.FromJson<PendingPublishOperation>(json);
+            }
+            catch (ArgumentException)
+            {
+                pending = null;
+            }
+
+            if (pending == null || string.IsNullOrWhiteSpace(pending.releaseId) ||
+                string.IsNullOrWhiteSpace(pending.packageVersion) || !Enum.IsDefined(typeof(HotUpdateEnvironmentKind), pending.environment))
+            {
+                SessionState.SetString(PendingPublishSessionKey, string.Empty);
+                return;
+            }
+
+            ApplyPendingPublishInputs(pending);
+            HotUpdateEnvironmentProfile profile = GetSelectedProfile();
+            StartOperation("Resuming interrupted HotUpdate publish…", token => RunPublishPipelineAsync(profile, pending, token));
+        }
+
+        private void ApplyPendingPublishInputs(PendingPublishOperation pending)
+        {
+            _packageName = pending.packageName;
+            _baseAppVersion = pending.baseAppVersion;
+            _packageVersion = pending.packageVersion;
+            _hotUpdateAssetOutputRoot = pending.hotUpdateAssetOutputRoot;
+            _architecture = pending.architecture;
+            _releaseNotes = pending.releaseNotes;
+            _selectedEnvironment = (HotUpdateEnvironmentKind)pending.environment;
+            _isMajorHotPatch = pending.isMajorHotPatch;
+            SaveLocalInputs();
+            SaveEnvironmentProfiles();
+        }
+
+        private void CancelCurrentOperation()
+        {
+            SessionState.SetString(PendingPublishSessionKey, string.Empty);
+            _operationCancellation?.Cancel();
         }
 
         private void StartOperation(string initialStatus, Func<CancellationToken, Task<string>> operation)
@@ -1002,6 +1097,7 @@ namespace StellarFramework.Editor.Modules
                 _operationBusy = false;
                 _operationCancellation?.Dispose();
                 _operationCancellation = null;
+                SessionState.SetString(PendingPublishSessionKey, string.Empty);
                 RefreshHistory();
                 SaveLocalInputs();
                 SaveEnvironmentProfiles();
@@ -1183,6 +1279,44 @@ namespace StellarFramework.Editor.Modules
             EditorPrefs.SetString(PrefsPrefix + suffix + ".assetOutputRoot", _hotUpdateAssetOutputRoot ?? string.Empty);
             EditorPrefs.SetString(PrefsPrefix + suffix + ".architecture", _architecture ?? string.Empty);
             EditorPrefs.SetString(PrefsPrefix + suffix + ".unitySkillsUrl", _unitySkillsUrl ?? string.Empty);
+        }
+
+        [Serializable]
+        private sealed class PendingPublishOperation
+        {
+            public string releaseId;
+            public string packageVersion;
+            public string packageName;
+            public string baseAppVersion;
+            public string hotUpdateAssetOutputRoot;
+            public string architecture;
+            public string releaseNotes;
+            public int environment;
+            public int platform;
+            public bool isMajorHotPatch;
+
+            public static PendingPublishOperation FromContext(
+                HotUpdatePublishContext context,
+                HotUpdateEnvironmentKind environment,
+                bool isMajorHotPatch,
+                string architecture,
+                string releaseNotes,
+                string hotUpdateAssetOutputRoot)
+            {
+                return new PendingPublishOperation
+                {
+                    releaseId = context.ReleaseId,
+                    packageVersion = context.PackageVersion,
+                    packageName = context.PackageName,
+                    baseAppVersion = context.BaseAppVersion,
+                    hotUpdateAssetOutputRoot = hotUpdateAssetOutputRoot,
+                    architecture = architecture,
+                    releaseNotes = releaseNotes,
+                    environment = (int)environment,
+                    platform = (int)context.Platform,
+                    isMajorHotPatch = isMajorHotPatch
+                };
+            }
         }
     }
 }

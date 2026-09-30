@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -34,6 +35,15 @@ namespace StellarFramework.Editor.HotUpdatePublisher
 
             string outputRoot = Path.GetFullPath(output.OutputDirectory);
             string rootPrefix = outputRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var nonPublishOutputFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string fileName in output.NonPublishOutputFiles ?? Array.Empty<string>())
+            {
+                if (string.IsNullOrWhiteSpace(fileName) ||
+                    !string.Equals(fileName, Path.GetFileName(fileName), StringComparison.Ordinal))
+                    return Task.FromResult(Failed("Non-publish YooAsset output entries must be root-level file names."));
+                nonPublishOutputFiles.Add(fileName);
+            }
+
             string[] allFiles = Directory.GetFiles(outputRoot, "*", SearchOption.AllDirectories);
             var publishFiles = new List<HotUpdatePublishFile>(allFiles.Length - 1);
             for (int index = 0; index < allFiles.Length; index++)
@@ -45,6 +55,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
 
                 string relativePath = fullPath.Substring(rootPrefix.Length).Replace(Path.DirectorySeparatorChar, '/');
                 if (string.Equals(relativePath, pointerFileName, StringComparison.OrdinalIgnoreCase)) continue;
+                if (nonPublishOutputFiles.Contains(relativePath)) continue;
                 publishFiles.Add(HotUpdatePublishFile.FromFile(relativePath, fullPath));
             }
 
@@ -160,6 +171,12 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                 return Failed("Version pointer package version does not match the validated publish context.");
 
             await context.PublishTargetAdapter.PublishVersionAsync(context.VersionPublishRequest, cancellationToken);
+            byte[] expectedBytes = new UTF8Encoding(false).GetBytes(context.VersionPublishRequest.PackageVersion);
+            HotUpdatePublishTargetFileInfo publishedPointer = await context.PublishTargetAdapter.GetInfoAsync(
+                context.VersionPublishRequest.PointerRelativePath, cancellationToken);
+            if (publishedPointer == null || publishedPointer.Length != expectedBytes.Length ||
+                !string.Equals(publishedPointer.Sha256, HotUpdatePublishFile.ComputeSha256(expectedBytes), StringComparison.OrdinalIgnoreCase))
+                return Failed("Published PackageVersion pointer does not contain the exact UTF-8 PackageVersion value.");
             return HotUpdatePublishStepResult.Succeeded();
         }
 

@@ -42,6 +42,72 @@ namespace StellarFramework.Tests.FrameworkValidation.Policies.HotUpdatePublisher
         }
 
         [Test]
+        public void CreationTimestampPersistsAndNewestReleaseSortsFirst()
+        {
+            DateTime older = new DateTime(2026, 9, 30, 10, 0, 0, DateTimeKind.Utc);
+            DateTime newer = older.AddMinutes(5);
+            HotUpdateReleaseRecord first = Record("release-001", "2026.09.30.001");
+            first.CreatedAtUtc = older;
+            HotUpdateReleaseRecord second = Record("release-002", "2026.09.30.002");
+            second.CreatedAtUtc = newer;
+
+            _repository.SaveActivated(first);
+            _repository.SaveActivated(second);
+
+            Assert.That(_repository.Load(first.ReleaseId).CreatedAtUtc, Is.EqualTo(older));
+            Assert.That(_repository.Load(second.ReleaseId).CreatedAtUtc, Is.EqualTo(newer));
+            Assert.That(_repository.List().Select(item => item.ReleaseId).ToArray(),
+                Is.EqualTo(new[] { second.ReleaseId, first.ReleaseId }));
+            Assert.That(File.ReadAllText(Path.Combine(_root, "release-" + second.ReleaseId + ".json")),
+                Does.Contain("CreatedAtUtcIso8601"));
+            Assert.That(File.ReadAllText(Directory.GetFiles(Path.Combine(_root, "Events"), "*.json")[0]),
+                Does.Contain("CreatedAtUtcIso8601"));
+        }
+
+        [Test]
+        public void LegacyRecordWithoutTimestampUsesActivationEventTimeForNewestFirstOrdering()
+        {
+            HotUpdateReleaseRecord older = Record("release-legacy-001", "2026.09.30.001");
+            HotUpdateReleaseRecord newer = Record("release-legacy-002", "2026.09.30.002");
+            older.CreatedAtUtcIso8601 = null;
+            newer.CreatedAtUtcIso8601 = null;
+            string olderPath = Path.Combine(_root, "release-" + older.ReleaseId + ".json");
+            string newerPath = Path.Combine(_root, "release-" + newer.ReleaseId + ".json");
+            Directory.CreateDirectory(_root);
+            File.WriteAllText(olderPath, UnityEngine.JsonUtility.ToJson(older, true));
+            File.WriteAllText(newerPath, UnityEngine.JsonUtility.ToJson(newer, true));
+            DateTime baseTime = new DateTime(2026, 9, 30, 10, 0, 0, DateTimeKind.Utc);
+            File.SetLastWriteTimeUtc(olderPath, baseTime.AddMinutes(4));
+            File.SetLastWriteTimeUtc(newerPath, baseTime.AddMinutes(3));
+            WriteLegacyActivationEvent(older.ReleaseId, older.PackageVersion,
+                Path.Combine(_root, "Events", "event-legacy-001.json"), baseTime);
+            WriteLegacyActivationEvent(newer.ReleaseId, newer.PackageVersion,
+                Path.Combine(_root, "Events", "event-legacy-002.json"), baseTime.AddMinutes(1));
+
+            Assert.That(_repository.List().Select(item => item.ReleaseId).ToArray(),
+                Is.EqualTo(new[] { newer.ReleaseId, older.ReleaseId }));
+            Assert.That(_repository.Load(newer.ReleaseId).CreatedAtUtc, Is.EqualTo(baseTime.AddMinutes(1)));
+        }
+
+        [Test]
+        public void TimestampLaterThanActivationEventIsRepairedFromImmutableEvent()
+        {
+            HotUpdateReleaseRecord record = Record("release-legacy-003", "2026.09.30.003");
+            DateTime activationTime = new DateTime(2026, 9, 30, 10, 0, 0, DateTimeKind.Utc);
+            record.CreatedAtUtcIso8601 = activationTime.AddMinutes(5).ToString("O");
+            Directory.CreateDirectory(_root);
+            string recordPath = Path.Combine(_root, "release-" + record.ReleaseId + ".json");
+            File.WriteAllText(recordPath, UnityEngine.JsonUtility.ToJson(record, true));
+            WriteLegacyActivationEvent(record.ReleaseId, record.PackageVersion,
+                Path.Combine(_root, "Events", "event-legacy-003.json"), activationTime);
+
+            HotUpdateReleaseRecord loaded = _repository.Load(record.ReleaseId);
+
+            Assert.That(loaded.CreatedAtUtc, Is.EqualTo(activationTime));
+            Assert.That(loaded.CreatedAtUtcIso8601, Is.EqualTo(activationTime.ToString("O")));
+        }
+
+        [Test]
         public void NewActiveReleaseSupersedesPriorActiveForSamePackageEnvironmentAndPlatform()
         {
             _repository.SaveActivated(Record("release-001", "2026.09.24.001"));
@@ -84,6 +150,7 @@ namespace StellarFramework.Tests.FrameworkValidation.Policies.HotUpdatePublisher
             for (int index = 0; index < events.Length; index++)
                 rollbackEventFound |= File.ReadAllText(events[index]).Contains("Rollback");
             Assert.That(rollbackEventFound, Is.True);
+            Assert.That(events.Select(File.ReadAllText), Has.Some.Contains("CreatedAtUtcIso8601"));
         }
 
         [Test]
@@ -124,6 +191,19 @@ namespace StellarFramework.Tests.FrameworkValidation.Policies.HotUpdatePublisher
                 CreatedAtUtc = DateTime.UtcNow,
                 Status = HotUpdateReleaseRecordStatus.Active
             };
+        }
+
+        private static void WriteLegacyActivationEvent(string releaseId, string version, string path, DateTime fileTimeUtc)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.WriteAllText(path, UnityEngine.JsonUtility.ToJson(new HotUpdateReleaseHistoryEvent
+            {
+                EventId = Path.GetFileNameWithoutExtension(path),
+                ReleaseId = releaseId,
+                EventType = "Activated",
+                ToVersion = version
+            }, true));
+            File.SetLastWriteTimeUtc(path, fileTimeUtc);
         }
     }
 }
