@@ -2,6 +2,14 @@
 
 > 这是面向维护者的“当前状态摘要”。历史阶段证据、Benchmark 明细与旧 Profile 数量保留在 `KitExportValidationMatrix.md`，不要把历史数字继续堆到本页。
 
+## 2026-09-30 二次审查增量
+
+- ToolsHub、Kit Catalog、asmdef 边界和仓库发布树完成静态复查：84 个原子 Profile ID 唯一，82 个 Stable / 2 个 RC；依赖、源码和文档路径完整，Profile 输出无重复；102 个 asmdef 的内部依赖图无环，Runtime 到 Editor 引用为 0。
+- FlowKit 业务骨架生成器的 Assets 路径边界已修复：`AssetsBackup` 等相邻目录不再被误判为 `Assets` 子目录。Unity Editor 与对应 EditMode 测试程序集编译通过，Console 为 0 errors / 0 warnings。
+- FlowKit 路径边界回归测试因 Unity 中存在未保存的 `<UnsavedScene:0>` 而未启动；安全测试门已中止请求，没有保存或丢弃场景。
+- 最新 Android HotUpdate 准备结果为 **FAIL**：`Tools/AndroidVerification/Results/20260930-121301/pipeline-result.json` 记录 HybridCLR `GenerateStripedAOTDlls` 未成功，Unity Player Build 返回 `Build was canceled`。APK 未生成，`productVerificationStatus` 为 `NOT_RUN`，清理为 PASS；因此本次没有 Android 设备/虚拟机验证结果。
+- 以上失败不覆盖 9 月 23 日已记录的 Android E2E 历史证据，但当前重跑仍待完成。此前的 P7 回归结果继续按历史证据看待，不代表本次变更已通过完整发布 Gate。
+
 ## 2026-09-22 验证基线（历史）
 
 ### 编译与运行
