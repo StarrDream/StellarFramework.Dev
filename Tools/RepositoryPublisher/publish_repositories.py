@@ -73,19 +73,22 @@ def require_committed_sources(source_root: Path, paths: Iterable[str]) -> None:
     if not checked:
         return
     result = subprocess.run(
-        ["git", "-C", str(source_root), "diff", "--quiet", "HEAD", "--", *checked],
+        ["git", "-C", str(source_root), "diff", "--name-only", "-z", "HEAD"],
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
     )
-    if result.returncode == 0:
+    if result.returncode != 0:
+        error = result.stderr.decode("utf-8", "replace").strip()
+        raise ReleaseError(f"Unable to verify release source files against HEAD: {error}")
+    checked_set = set(checked)
+    changed = [
+        path.decode("utf-8", "surrogateescape")
+        for path in result.stdout.split(b"\0")
+        if path and norm(path.decode("utf-8", "surrogateescape")) in checked_set
+    ]
+    if not changed:
         return
-    if result.returncode != 1:
-        raise ReleaseError(f"Unable to verify release source files against HEAD: {result.stderr.strip()}")
-    changed = run_git(source_root, "diff", "--name-only", "HEAD", "--", *checked).splitlines()
     preview = ", ".join(changed[:20])
     suffix = " ..." if len(changed) > 20 else ""
     raise ReleaseError(

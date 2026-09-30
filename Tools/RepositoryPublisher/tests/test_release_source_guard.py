@@ -52,6 +52,12 @@ class ReleaseSourceGuardTests(unittest.TestCase):
         (self.root / "unrelated.txt").write_text("updated docs\n", encoding="utf-8")
         PUBLISHER.require_committed_sources(self.root, ["included.txt"])
 
+    def test_large_release_input_list_does_not_expand_git_command_line(self) -> None:
+        paths = ["included.txt"]
+        paths.extend(f"Assets/Kits/Kit-{index:04}/Source.cs" for index in range(2500))
+
+        PUBLISHER.require_committed_sources(self.root, paths)
+
     def test_unstaged_release_source_change_is_rejected(self) -> None:
         (self.root / "included.txt").write_text("uncommitted release bytes\n", encoding="utf-8")
 
