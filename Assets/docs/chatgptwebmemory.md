@@ -2396,3 +2396,11 @@ Current active milestone is **P7 — Feature / POI + PlacementKit**. P7 follows 
   3. Complete HotUpdate production closure: BaseRelease, version generation, update client, rollback, Android E2E.
 - New current status document:
   `FrameworkDoc/09-Development/Handoffs/2026-09-29-Current-Development-Status.md`
+
+### 2026-09-30 — HotUpdate closure and three-repository push preparation complete
+
+- Fixed Publisher AOT metadata selection, immutable upload exclusions, YooAsset business Package addressability, and Release History timestamp ordering/migration. Unity `JsonUtility` omits `DateTime`; Release records/events now persist ISO-8601 UTC strings and old records use immutable `Activated` events to recover creation order.
+- Android BaseRelease Full Gate on MuMu passed with IL2CPP x86_64. Consumer `2026.09.30.011` cold-start and restart passed: 7 files / 1,846,971 bytes, four configured AOT metadata files loaded, assembly SHA256 and entry invocation verified, restart downloaded 0 bytes. YooAsset manifest contains `HotUpdateBehavior` address. Rollbacks `.011 -> .010 -> .011` passed and left `.011` active.
+- Unity tests: HotUpdatePublisher **129/129**, Release History **5/5**, Rollback **4/4**. RepositoryPublisher Python tests **10/10**. Unity console/compile health **0/0**.
+- RepositoryPublisher generated the 52-profile General and 32-profile Extensions releases from Dev. Both releases and the General+Extensions composed consumer passed static Release Tree validation; a clean Unity `2022.3.62f3c1` consumer import compiled with no C# errors.
+- Temporary E2E runner, generated consumer assets, and Unity's unrelated EditorSettings changes were cleaned. No remote push has been performed.

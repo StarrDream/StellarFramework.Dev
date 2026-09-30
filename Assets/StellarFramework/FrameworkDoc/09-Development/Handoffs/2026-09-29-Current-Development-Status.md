@@ -19,11 +19,9 @@
 - Publisher 回滚 `.011 → .010 → .011` 均通过，最终本地版本指针为 `.011`。
 - 测试证据：Publisher EditMode 129/129；Release History 5/5；Rollback 4/4；RepositoryPublisher Python 单元测试 10/10。
 
-## 后续收尾
+## 发布准备状态
 
-1. 移除本轮临时 E2E 菜单脚手架及生成的 Consumer 中间文件，恢复 Unity 自动修改的无关 EditorSettings。
-2. 检查 Dev diff 与 README/文档后提交 Dev。
-3. 使用 RepositoryPublisher 从已提交的 Dev 生成 General 与 Extensions，运行 Release Tree 校验，并分别本地提交三个仓库。
-4. 推送前确认三仓均无未提交改动，且各仓分支仅包含待推送提交。
-
-本状态文档记录本轮完成的验证；未执行远端推送。
+- 临时 E2E 菜单脚手架和生成的 Consumer 中间文件已清理；无关 EditorSettings 已恢复。
+- RepositoryPublisher 从 Dev 生成 General（52 个 Profile）与 Extensions（32 个 Profile）。两仓和合并后的 Extensions Consumer 均通过 Release Tree 校验。
+- 合并后的 Consumer 在 Unity 2022.3.62f3c1 完成首次导入及脚本编译，C# 编译错误为 0。
+- Dev、General、Extensions 的本地提交组成待推送变更；远端推送尚未执行。
