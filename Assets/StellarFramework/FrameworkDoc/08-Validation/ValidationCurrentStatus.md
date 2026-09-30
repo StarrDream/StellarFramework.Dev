@@ -5,10 +5,12 @@
 ## 2026-09-30 二次审查增量
 
 - ToolsHub、Kit Catalog、asmdef 边界和仓库发布树完成静态复查：84 个原子 Profile ID 唯一，82 个 Stable / 2 个 RC；依赖、源码和文档路径完整，Profile 输出无重复；102 个 asmdef 的内部依赖图无环，Runtime 到 Editor 引用为 0。
-- FlowKit 业务骨架生成器的 Assets 路径边界已修复：`AssetsBackup` 等相邻目录不再被误判为 `Assets` 子目录。Unity Editor 与对应 EditMode 测试程序集编译通过，Console 为 0 errors / 0 warnings。
-- FlowKit 路径边界回归测试因 Unity 中存在未保存的 `<UnsavedScene:0>` 而未启动；安全测试门已中止请求，没有保存或丢弃场景。
-- 最新 Android HotUpdate 准备结果为 **FAIL**：`Tools/AndroidVerification/Results/20260930-121301/pipeline-result.json` 记录 HybridCLR `GenerateStripedAOTDlls` 未成功，Unity Player Build 返回 `Build was canceled`。APK 未生成，`productVerificationStatus` 为 `NOT_RUN`，清理为 PASS；因此本次没有 Android 设备/虚拟机验证结果。
-- 以上失败不覆盖 9 月 23 日已记录的 Android E2E 历史证据，但当前重跑仍待完成。此前的 P7 回归结果继续按历史证据看待，不代表本次变更已通过完整发布 Gate。
+- FlowKit 业务骨架生成器的 Assets 路径边界已修复：`AssetsBackup` 等相邻目录不再被误判为 `Assets` 子目录。Unity Editor 与对应 EditMode 测试程序集编译通过；精确回归 `ProjectScaffolderRejectsPathsOutsideAssetsDirectoryBoundary` job `7aa89f32` **1/1 PASS**，Unity Diagnose 为 0 errors / 0 warnings。
+- FlowKit 路径边界回归最初因 `<UnsavedScene:0>` 被安全测试门阻止；随后刷新并等待 Unity 空闲后运行并通过（job `7aa89f32`）。整个流程没有保存或丢弃该场景。
+- MuMu 普通 Release 样例验证 `Tools/AndroidVerification/Results/20260930-1417-MuMu-ArchitectureDemo/mumu-verification-summary.json`：APK 冷启动与运行稳定 PASS；Localization 中文 → English → 中文 PASS；tablet、widescreen、1024x768 三种几何下的通用 Canvas 视觉 smoke PASS。此 APK 未引用 UIAdaptationKit，因此不把这些截图标作 UIAdaptationKit 专项实机验证。
+- MuMu Android HotUpdate 最终 Gate `Tools/AndroidVerification/Results/20260930-191703/pipeline-result.json` = **PASS**：HybridCLR Android IL2CPP 产物重新生成；4 项 AOT metadata 全部加载；程序集 SHA256 与 Manifest 一致；冷启动更新下载 6 个文件 / 1,845,419 字节并调用热更入口；强制停止后重启下载 0 字节；清理 PASS。APK 构建 0 errors / 1 warning（`insecureHttpOption=Unavailable`）；Unity Editor Diagnose 为 0 errors / 0 warnings。
+- UIAdaptationKit solver/controller 的 `UIKitAdaptationTests` **21/21 PASS**，clean consumer PlayMode smoke **1/1 PASS**（详见 `Assets/docs/chatgptwebmemory.md`）。本轮 MuMu ArchitectureDemo 不包含 UIAdaptationKit，故 cutout/SafeArea 专项 Android smoke 未运行；不将通用 Canvas 截图作为替代证据。
+- 较早的 Android HotUpdate 尝试 `20260930-121301` 未能完成，已由 `20260930-191703` 的完整 PASS Gate 覆盖；失败尝试没有产生设备验证结果。
 
 ## 2026-09-22 验证基线（历史）
 
