@@ -6,6 +6,8 @@ param(
     [int] $RuntimeSeconds = 15,
     [int] $RestartRuntimeSeconds = 5,
     [switch] $HotUpdate,
+    [switch] $RequireUIAdaptationPass,
+    [switch] $RequireSafeAreaInsets,
     [int] $CdnPort = 18743,
     [string] $PythonExe = 'python.exe',
     [string] $ReleaseGateEvidencePath = '',
@@ -76,6 +78,7 @@ $pipelineResult = [ordered]@{
     emulatorMemoryMegabytes = $null
     emulatorMemTotalKilobytes = $null
     smokeResult = $null
+    uiAdaptationVerification = $null
     hotUpdatePreparation = $null
     hotUpdateCdn = $null
     hotUpdateRuntime = $null
@@ -620,6 +623,12 @@ try
         '-RestartRuntimeSeconds', $effectiveRestartSeconds,
         '-OutputDirectory', $runDirectory
     )
+    if ($RequireUIAdaptationPass -or $RequireSafeAreaInsets) {
+        $smokeArgs += '-RequireUIAdaptationPass'
+    }
+    if ($RequireSafeAreaInsets) {
+        $smokeArgs += '-RequireSafeAreaInsets'
+    }
     if ($HotUpdate) {
         $smokeArgs += @(
             '-RequireHotUpdatePass',
@@ -644,6 +653,7 @@ try
 
     $smokeResult = Get-Content -LiteralPath $smokeResultPath -Raw | ConvertFrom-Json
     $pipelineResult.smokeResult = $smokeResult.status
+    $pipelineResult.uiAdaptationVerification = $smokeResult.uiAdaptationVerification
     if ($smokeResult.status -ne 'PASS')
     {
         throw "Smoke verification result is '$($smokeResult.status)'."

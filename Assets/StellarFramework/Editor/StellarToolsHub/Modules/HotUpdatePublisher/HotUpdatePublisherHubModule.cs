@@ -517,7 +517,7 @@ namespace StellarFramework.Editor.Modules
         private void DrawAdvanced()
         {
             Section("Advanced Tools");
-            EditorGUILayout.HelpBox("底层操作只在高级区显示。导出与构建按钮在目标/BaseRelease/生产 Collector 完整绑定前禁用。", MessageType.Warning);
+            EditorGUILayout.HelpBox("底层操作只在高级区显示。Build、Dry Run 与 Build & Publish 会根据目标、BaseRelease、Collector、发布目标和 Gate 配置的就绪状态启用。", MessageType.Warning);
 
             EditorGUILayout.HelpBox("HybridCLR compile/export, YooAsset build, artifact validation and Release Gate run as ordered stages from Build, Dry Run and Build & Publish.", MessageType.Info);
             _unitySkillsUrl = EditorGUILayout.TextField("UnitySkills URL", _unitySkillsUrl);

@@ -7,6 +7,8 @@ param(
     [string] $OutputDirectory = '',
     [switch] $SkipClearAppData,
     [switch] $RequireHotUpdatePass,
+    [switch] $RequireUIAdaptationPass,
+    [switch] $RequireSafeAreaInsets,
     [string] $HotUpdateHost = '127.0.0.1',
     [int] $HotUpdatePort = 18743,
     [string] $HotUpdatePackageName = 'StellarHotUpdateVerification',
@@ -56,6 +58,7 @@ $result = [ordered]@{
     restartPid = $null
     coldStartSystemPromptsHandled = 0
     restartSystemPromptsHandled = 0
+    uiAdaptationVerification = $null
     hotUpdateColdStart = $null
     hotUpdateRestart = $null
     runtimeSeconds = $RuntimeSeconds
@@ -186,6 +189,45 @@ function Read-StellarHotUpdatePassRecord {
     }
 
     return $payload
+}
+
+function Read-StellarUIAdaptationEvidence {
+    param(
+        [Parameter(Mandatory = $true)] [string[]] $Paths,
+        [switch] $RequirePass,
+        [switch] $RequireSafeAreaInsets
+    )
+
+    $evidence = @(
+        foreach ($path in $Paths) {
+            if (Test-Path -LiteralPath $path) {
+                Select-String -LiteralPath $path `
+                    -Pattern '\[ArchitectureDemo\]\[UIAdaptation\].*result=(PASS|FAIL).*insets=(True|False)' `
+                    -AllMatches
+            }
+        }
+    )
+    $failed = @($evidence | Where-Object { $_.Line -match 'result=FAIL' })
+    if ($failed.Count -gt 0) {
+        throw "UIAdaptation reported a failed SafeAreaRoot geometry check: $($failed[0].Line)"
+    }
+
+    $passed = @($evidence | Where-Object { $_.Line -match 'result=PASS' })
+    if ($RequirePass -and $passed.Count -eq 0) {
+        throw 'UIAdaptation did not emit a PASS geometry record during cold start or restart.'
+    }
+
+    $safeAreaInsetEvidence = @($passed | Where-Object { $_.Line -match 'insets=True' })
+    if ($RequireSafeAreaInsets -and $safeAreaInsetEvidence.Count -eq 0) {
+        throw 'UIAdaptation did not observe non-zero Android Safe Area insets during cold start or restart.'
+    }
+
+    [ordered]@{
+        status = if ($passed.Count -gt 0 -and $failed.Count -eq 0) { 'PASS' } elseif ($RequirePass) { 'FAIL' } else { 'NOT_REQUIRED' }
+        geometryRecordCount = $passed.Count
+        safeAreaInsetsObserved = ($safeAreaInsetEvidence.Count -gt 0)
+        evidence = @($passed | ForEach-Object { $_.Line })
+    }
 }
 
 function Get-StellarAndroidStartupPromptButton {
@@ -437,6 +479,13 @@ try {
         $result.hotUpdateRestart = Read-StellarHotUpdatePassRecord `
             -Path $restartAppLogPath `
             -ExpectCache $true
+    }
+
+    if ($RequireUIAdaptationPass -or $RequireSafeAreaInsets) {
+        $result.uiAdaptationVerification = Read-StellarUIAdaptationEvidence `
+            -Paths @($appLogPath, $restartAppLogPath) `
+            -RequirePass:$true `
+            -RequireSafeAreaInsets:$RequireSafeAreaInsets
     }
 
     $result.status = 'PASS'

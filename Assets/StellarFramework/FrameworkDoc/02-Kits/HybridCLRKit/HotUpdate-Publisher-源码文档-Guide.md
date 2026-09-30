@@ -17,7 +17,9 @@ Stage Handlers
    └─ Release History Repository
 ```
 
-当前 ToolsHub 面向配置状态展示并保持未配置的 Build/Publish/rollback 按钮禁用；LocalFolder 根路径作为非秘密环境 profile 字段保存在项目级 EditorPrefs，并可由 `LocalFolderPublishTarget(profile)` 使用。业务项目完成 Collector、BaseRelease、目标及阶段工厂装配后，才可以开放执行。不要在 UI 的 `OnGUI` 中重写发布逻辑。
+ToolsHub 已接通发布工作流。`HotUpdatePublisherHubModule.DrawMainActions` 根据 Build 与 Publish 就绪检查分别启用 `Build`、`Dry Run`、`Build & Publish`；按钮进入对应的运行方法，再由 `CreateWorkflow` 调用 `HotUpdatePublisherWorkflowAssembly.Create(...)` 组装标准阶段。缺少平台构建 Adapter、有效 BaseRelease、Collector、发布目标、凭证或 Gate 配置时，相应操作保持禁用并显示具体阻断原因；运行期间也会禁用重复操作。LocalFolder 根路径作为非秘密环境 Profile 字段保存在项目级 EditorPrefs，并传给 `LocalFolderPublishTarget(profile)`。不要在 UI 的 `OnGUI` 中重写发布逻辑。
+
+当前端到端证据覆盖 Development + LocalFolder：`2026.09.30.011` 在本地发布目录完成不可变文件上传、HTTP 回读、Android Gate、消费者冷启动/缓存重启和回滚。发布目录与 CDN 均为本机测试资源；真实 Production S3/CDN endpoint、凭证、TLS 域名和生产权限尚未验证，部署项目仍需配置并执行 Production Dry Run。
 
 ## 核心数据
 
@@ -45,7 +47,7 @@ Preflight → ClassifyChanges → CompileHotUpdate → ExportHybridCLRAssets
 
 任意阶段失败、抛异常、取消或缺失都会停止。`PublishVersion` 仅在不可变文件上传和远端验证都完成后才能执行；`Finalize` 只有在 Gate、远端校验和版本发布通过后才持久化 Active Release Record。
 
-`HotUpdatePublisherWorkflowAssembly.Create(...)` 提供 Editor 侧的标准组装入口，生成上述 12 阶段全流程和只读 8 阶段 Dry Run。调用方显式注入 `IHotUpdateGitSnapshotProvider`、变更分类器、构建 Adapter、产物验证器、Gate Runner、发布目标、远端预验证器和 History Repository；组装器不会自行搜索项目设置、Collector 或凭据。实际项目的 ToolsHub 入口必须在这些配置均已验证后才创建并执行该工作流。
+`HotUpdatePublisherWorkflowAssembly.Create(...)` 提供 Editor 侧的标准组装入口，生成上述 12 阶段全流程和只读 8 阶段 Dry Run。调用方显式注入 `IHotUpdateGitSnapshotProvider`、变更分类器、构建 Adapter、产物验证器、Gate Runner、发布目标、远端预验证器和 History Repository；组装器不会自行搜索项目设置、Collector 或凭据。ToolsHub 负责从已校验的项目配置创建这些依赖并执行工作流。
 
 ## Build 与 Validation Adapter
 
