@@ -416,6 +416,21 @@ namespace StellarFramework.Editor.Modules.FlowKit.Tests
         }
 
         [Test]
+        public void ProjectScaffolderRejectsPathsOutsideAssetsDirectoryBoundary()
+        {
+            string projectRoot = Path.Combine(
+                Path.GetTempPath(),
+                "StellarFramework_FlowKitPath_" + Guid.NewGuid().ToString("N"));
+            string assets = Path.Combine(projectRoot, "Assets");
+
+            Assert.That(FlowKitProjectScaffolder.IsPathWithinDirectory(assets, assets), Is.True);
+            Assert.That(FlowKitProjectScaffolder.IsPathWithinDirectory(Path.Combine(assets, "Generated"), assets), Is.True);
+            Assert.That(FlowKitProjectScaffolder.IsPathWithinDirectory(
+                Path.Combine(projectRoot, "AssetsBackup"), assets), Is.False);
+            Assert.That(FlowKitProjectScaffolder.IsPathWithinDirectory(projectRoot, assets), Is.False);
+        }
+
+        [Test]
         public void FlowBindingUsesExplicitTargetAndPreservesSelfFallback()
         {
             var gameObject = new GameObject("FlowBindingContractTest");

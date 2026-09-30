@@ -30,9 +30,9 @@ namespace StellarFramework.Editor.Modules.FlowKit
                 string.Empty);
             if (string.IsNullOrEmpty(parent)) return false;
 
-            string normalizedParent = parent.Replace('\\', '/').TrimEnd('/');
-            string normalizedAssets = Application.dataPath.Replace('\\', '/').TrimEnd('/');
-            if (!normalizedParent.StartsWith(normalizedAssets, StringComparison.OrdinalIgnoreCase))
+            string assetsDirectory = Path.GetFullPath(Application.dataPath);
+            string parentDirectory = Path.GetFullPath(parent);
+            if (!IsPathWithinDirectory(parentDirectory, assetsDirectory))
             {
                 EditorUtility.DisplayDialog(
                     "FlowKit 业务骨架",
@@ -43,7 +43,7 @@ namespace StellarFramework.Editor.Modules.FlowKit
 
             string moduleName = ToPascalCase(flowId);
             if (string.IsNullOrEmpty(moduleName)) moduleName = "Workflow";
-            string moduleDirectory = BuildModuleFiles(flowId, parent, moduleName);
+            string moduleDirectory = BuildModuleFiles(flowId, parentDirectory, moduleName);
             if (string.IsNullOrEmpty(moduleDirectory))
             {
                 EditorUtility.DisplayDialog(
@@ -54,8 +54,8 @@ namespace StellarFramework.Editor.Modules.FlowKit
             }
 
             AssetDatabase.Refresh();
-            string assetPath = "Assets" + moduleDirectory.Replace('\\', '/')
-                .Substring(normalizedAssets.Length);
+            string moduleRelativePath = Path.GetRelativePath(assetsDirectory, moduleDirectory);
+            string assetPath = "Assets/" + moduleRelativePath.Replace('\\', '/');
             UnityEngine.Object folder = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetPath);
             if (folder != null)
             {
@@ -67,6 +67,39 @@ namespace StellarFramework.Editor.Modules.FlowKit
                 $"FlowKit 业务骨架已创建：{assetPath}\n" +
                 "请按 MSV 规则把业务放入 Service/Model；生成目录只负责 FlowKit 边界与组装。");
             return true;
+        }
+
+        internal static bool IsPathWithinDirectory(string candidatePath, string directoryPath)
+        {
+            if (string.IsNullOrWhiteSpace(candidatePath) || string.IsNullOrWhiteSpace(directoryPath))
+                return false;
+
+            try
+            {
+                string fullCandidatePath = Path.GetFullPath(candidatePath);
+                string fullDirectoryPath = Path.GetFullPath(directoryPath);
+                string relativePath = Path.GetRelativePath(fullDirectoryPath, fullCandidatePath);
+                if (relativePath == ".") return true;
+                if (Path.IsPathRooted(relativePath)) return false;
+
+                string parentPrefix = ".." + Path.DirectorySeparatorChar;
+                string alternateParentPrefix = ".." + Path.AltDirectorySeparatorChar;
+                return relativePath != ".." &&
+                    !relativePath.StartsWith(parentPrefix, StringComparison.Ordinal) &&
+                    !relativePath.StartsWith(alternateParentPrefix, StringComparison.Ordinal);
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+            catch (NotSupportedException)
+            {
+                return false;
+            }
+            catch (PathTooLongException)
+            {
+                return false;
+            }
         }
 
         internal static string BuildModuleFiles(string flowId, string parentDirectory, string moduleName = null)
