@@ -76,7 +76,8 @@ namespace StellarFramework.Tests.FrameworkValidation.Policies.Packaging
             Assert.That(source, Does.Contain("RELEASE-MANIFEST.json"));
             Assert.That(source, Does.Contain("verify_no_extension_assemblies_in_general"));
             Assert.That(source, Does.Contain("require_committed_sources"));
-            Assert.That(source, Does.Contain("\"diff\", \"--quiet\", \"HEAD\""));
+            Assert.That(source, Does.Contain("\"--name-only\", \"-z\", \"HEAD\""));
+            Assert.That(source, Does.Contain("checked_set"));
         }
 
         private static void AddOwners(Dictionary<string, string> owners, IEnumerable<string> ids, string owner)

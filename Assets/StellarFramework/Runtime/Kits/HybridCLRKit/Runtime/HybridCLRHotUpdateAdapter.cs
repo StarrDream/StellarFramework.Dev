@@ -169,6 +169,10 @@ namespace StellarFramework.HybridCLR
 
         private static bool TryLoadMetadataForAotAssembly(byte[] dllBytes, out string error)
         {
+#if !HYBRIDCLR_ENABLE
+            error = "HYBRIDCLR_ENABLE is not enabled. AOT metadata loading is unavailable.";
+            return false;
+#else
             error = null;
             try
             {
@@ -190,6 +194,7 @@ namespace StellarFramework.HybridCLR
             }
 
             return true;
+#endif
         }
 
         private static void SetFailed(string error)
