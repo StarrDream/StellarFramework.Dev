@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEngine;
 using YooAsset.Editor;
 
 namespace StellarFramework.Editor.HotUpdatePublisher
@@ -9,6 +12,9 @@ namespace StellarFramework.Editor.HotUpdatePublisher
     [InitializeOnLoad]
     internal static class YooAssetPublisherCollectorStatusProvider
     {
+        private const string GeneratedRoot = "Assets/HotUpdatePublisherConsumerE2E/Generated";
+        private const string PrefsPrefix = "StellarFramework.HotUpdatePublisher.";
+
         static YooAssetPublisherCollectorStatusProvider()
         {
             HotUpdatePublisherCollectorStatus.Provider = Check;
@@ -36,14 +42,68 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                         $"Package '{packageName}' 已存在，但缺少有效 Group 或 Collector。请打开 YooAsset Collector 补全业务资源和 Publisher 输出收集项。");
                 }
 
+                string outputRoot = ReadHotUpdateAssetOutputRoot();
+                if (!IsSafeAssetRoot(outputRoot))
+                    return new HotUpdatePublisherCollectorStatus(false,
+                        $"HotUpdate Assets Root '{outputRoot}' 无效。请设置 Assets/ 下的安全目录后再检查 Collector。");
+
+                string[] requiredPaths =
+                {
+                    outputRoot + "/Manifest/HotUpdateManifest.json",
+                    outputRoot + "/Code/HotUpdate.dll.bytes",
+                    outputRoot + "/Metadata/mscorlib.dll.bytes",
+                    outputRoot + "/Metadata/System.dll.bytes",
+                    outputRoot + "/Metadata/System.Core.dll.bytes",
+                    outputRoot + "/Metadata/UnityEngine.CoreModule.dll.bytes"
+                };
+                var configuredPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (AssetBundleCollectorGroup group in package.Groups)
+                {
+                    if (group?.Collectors == null) continue;
+                    foreach (AssetBundleCollector collector in group.Collectors)
+                    {
+                        if (!string.IsNullOrWhiteSpace(collector?.CollectPath))
+                            configuredPaths.Add(collector.CollectPath.Replace('\\', '/').TrimEnd('/'));
+                    }
+                }
+
+                string[] missingPaths = requiredPaths.Where(path => !configuredPaths.Contains(path)).ToArray();
+                if (missingPaths.Length > 0)
+                    return new HotUpdatePublisherCollectorStatus(false,
+                        $"Package '{packageName}' 缺少 Publisher 产物收集路径：{string.Join(", ", missingPaths)}。打开 YooAsset Collector 并添加这些路径；已有 Package 配置会保留，不会自动覆盖。");
+
                 return new HotUpdatePublisherCollectorStatus(true,
-                    $"已找到业务 Collector '{packageName}'（{groupCount} 个 Group，{collectorCount} 个 Collector）。正式构建仍会校验每个收集路径和 Android 产物。");
+                    $"业务 Collector '{packageName}' 已包含全部 Publisher 产物路径（{groupCount} 个 Group，{collectorCount} 个 Collector）。正式构建仍会校验 Android 产物。");
             }
             catch (Exception exception)
             {
                 return new HotUpdatePublisherCollectorStatus(false,
                     $"读取 YooAsset Collector 失败：{exception.GetType().Name}: {exception.Message}");
             }
+        }
+
+        private static string ReadHotUpdateAssetOutputRoot()
+        {
+            DirectoryInfo parent = Directory.GetParent(Application.dataPath);
+            string suffix = parent?.FullName.Replace('\\', '/') ?? string.Empty;
+            return EditorPrefs.GetString(PrefsPrefix + suffix + ".assetOutputRoot", GeneratedRoot)
+                .Replace('\\', '/').TrimEnd('/');
+        }
+
+        private static bool IsSafeAssetRoot(string assetRoot)
+        {
+            if (string.IsNullOrWhiteSpace(assetRoot) || !assetRoot.StartsWith("Assets/", StringComparison.Ordinal) ||
+                assetRoot.Contains(":") || assetRoot.Contains("%")) return false;
+            string[] segments = assetRoot.Split('/');
+            if (segments.Any(segment => string.IsNullOrWhiteSpace(segment) || segment == "." || segment == ".."))
+                return false;
+
+            DirectoryInfo parent = Directory.GetParent(Application.dataPath);
+            if (parent == null) return false;
+            string assetsRoot = Path.GetFullPath(Application.dataPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            string candidate = Path.GetFullPath(Path.Combine(parent.FullName,
+                assetRoot.Replace('/', Path.DirectorySeparatorChar))).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            return candidate.StartsWith(assetsRoot, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -66,6 +66,16 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(source, Does.Contain("footer.style.flexGrow = 0f;"));
         }
 
+        [Test]
+        public void ListSerializerSearchReportsPropertyGetterFailuresInsteadOfSilentlySkipping()
+        {
+            string source = ReadAssetText("Assets/StellarFramework/Editor/StellarToolsHub/Modules/ListSerializerWindow.cs");
+
+            Assert.That(source, Does.Contain("catch (TargetInvocationException exception)"));
+            Assert.That(source, Does.Contain("Search skipped property getter"));
+            Assert.That(source, Does.Not.Contain("catch\n                {\n                }"));
+        }
+
         private static string ReadAssetText(string assetPath)
         {
             string projectRoot = Directory.GetParent(Application.dataPath)?.FullName ?? Application.dataPath;

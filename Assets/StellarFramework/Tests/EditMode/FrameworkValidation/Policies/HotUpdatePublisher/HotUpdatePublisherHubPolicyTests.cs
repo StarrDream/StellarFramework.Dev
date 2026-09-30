@@ -2,6 +2,7 @@ using System.IO;
 using System.Reflection;
 using NUnit.Framework;
 using StellarFramework.Editor;
+using StellarFramework.Editor.HotUpdatePublisher;
 using StellarFramework.Editor.Modules;
 using UnityEngine;
 
@@ -43,10 +44,13 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(source, Does.Contain("Change Safety").And.Contain("Base App")
                 .And.Contain("YooAsset Package").And.Contain("Remote Release")
                 .And.Contain("HybridCLR").And.Contain("AOT").And.Contain("Server"));
-            Assert.That(source, Does.Contain("HybridCLR Export").And.Contain("YooAsset Build")
-                .And.Contain("Run Gate").And.Contain("Open Build Folder")
+            Assert.That(source, Does.Contain("Compile / Export / YooAsset").And.Contain("Artifact Validation")
+                .And.Contain("Release Gate / Dry Run").And.Contain("Open Build Folder")
                 .And.Contain("View Manifest").And.Contain("View BaseRelease"));
-            Assert.That(source, Does.Contain("尚未接入"));
+            Assert.That(source, Does.Contain("HotUpdatePublisherBuildAdapters.Create(repository)")
+                .And.Contain("workflow.DryRun.RunAsync").And.Contain("workflow.Pipeline.RunAsync")
+                .And.Contain("RunRollbackAsync"));
+            Assert.That(source, Does.Not.Contain("尚未接入"));
             Assert.That(source, Does.Contain("EditorPrefs"));
         }
 
@@ -59,6 +63,17 @@ namespace StellarFramework.Tests.FrameworkValidation
                 .And.Contain("_gitSnapshot.IsDirty"));
             Assert.That(source, Does.Contain("Production 发布被禁止"));
             Assert.That(source, Does.Contain("Development/Staging 可继续"));
+        }
+
+        [Test]
+        public void OptionalSdkAdaptersRegisterWithThePublisherHubAtEditorLoad()
+        {
+            Assert.That(HotUpdatePublisherBuildAdapters.GetReadinessError(), Is.Empty);
+            Assert.That(HotUpdatePublisherBuildAdapters.GetHybridCLRPackageVersion(), Is.Not.Empty);
+
+            IHotUpdateBuildAdapter adapter = HotUpdatePublisherBuildAdapters.Create(
+                new HotUpdateBaseReleaseRepository());
+            Assert.That(adapter, Is.TypeOf<CompositeHotUpdateBuildAdapter>());
         }
 
         private static string ReadModuleSource()

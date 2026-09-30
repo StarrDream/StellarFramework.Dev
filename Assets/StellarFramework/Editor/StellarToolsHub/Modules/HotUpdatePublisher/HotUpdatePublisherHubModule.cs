@@ -1,15 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEditor;
+using UnityEditor.PackageManager;
 using UnityEngine;
 using StellarFramework.Editor.HotUpdatePublisher;
+using UPMInfo = UnityEditor.PackageManager.PackageInfo;
 
 namespace StellarFramework.Editor.Modules
 {
     /// <summary>
     /// ToolsHub surface for the staged HotUpdate Publisher workflow. Execution buttons remain gated
-    /// until their owning pipeline phases are available, so the UI never reports a placeholder as success.
+    /// until the required SDK adapters, BaseRelease, Collector and publish target are ready.
     /// </summary>
     [StellarTool("HotUpdate Publisher", "热更新", 0,
         RequiredAssemblyNames = new[] { "StellarFramework.ToolsHub.HotUpdatePublisher.Editor" })]
@@ -36,6 +41,9 @@ namespace StellarFramework.Editor.Modules
         private string _packageName = "HotUpdatePublisherConsumerE2E";
         private string _packageVersion = "1.0.1";
         private string _releaseNotes = "";
+        private string _hotUpdateAssetOutputRoot = "Assets/HotUpdatePublisherConsumerE2E/Generated";
+        private string _architecture = "x86_64";
+        private string _unitySkillsUrl = "http://localhost:8090";
         private string _scanError = "";
         private HotUpdateChangeClassificationResult _classification;
         private HotUpdateGitSnapshot _gitSnapshot;
@@ -46,6 +54,12 @@ namespace StellarFramework.Editor.Modules
         private Vector2 _historyScroll;
         private IReadOnlyList<HotUpdateReleaseRecord> _historyRecords = Array.Empty<HotUpdateReleaseRecord>();
         private string _historyDiagnostic = string.Empty;
+        private readonly Dictionary<string, int> _rollbackSelections = new Dictionary<string, int>(StringComparer.Ordinal);
+        private bool _isMajorHotPatch;
+        private bool _operationBusy;
+        private string _operationStatus = string.Empty;
+        private string _operationError = string.Empty;
+        private CancellationTokenSource _operationCancellation;
 
         public override string Description => "查看热更变更风险、目标环境和发布产物状态。";
 
@@ -58,18 +72,23 @@ namespace StellarFramework.Editor.Modules
                 _packageName = "HotUpdatePublisherConsumerE2E";
             _packageVersion = EditorPrefs.GetString(PrefsPrefix + suffix + ".packageVersion", _packageVersion);
             _releaseNotes = EditorPrefs.GetString(PrefsPrefix + suffix + ".releaseNotes", _releaseNotes);
+            _hotUpdateAssetOutputRoot = EditorPrefs.GetString(PrefsPrefix + suffix + ".assetOutputRoot", _hotUpdateAssetOutputRoot);
+            _architecture = EditorPrefs.GetString(PrefsPrefix + suffix + ".architecture", _architecture);
+            _unitySkillsUrl = EditorPrefs.GetString(PrefsPrefix + suffix + ".unitySkillsUrl", _unitySkillsUrl);
             LoadEnvironmentProfiles(PrefsPrefix + suffix + ProfilesPrefsSuffix);
             RefreshHistory();
         }
 
         public override void OnDisable()
         {
+            _operationCancellation?.Cancel();
             SaveLocalInputs();
         }
 
         public override void OnGUI()
         {
             DrawHeader();
+            DrawOperationStatus();
             _selectedTab = (SectionTab)GUILayout.Toolbar((int)_selectedTab, TabNames, GUILayout.Height(28));
             GUILayout.Space(8);
 
@@ -100,13 +119,16 @@ namespace StellarFramework.Editor.Modules
             DrawReadOnlyRow("Environment", _selectedEnvironment.ToString());
             _baseAppVersion = EditorGUILayout.TextField("Base App", _baseAppVersion);
             _packageName = EditorGUILayout.TextField("YooAsset Package", _packageName);
-            _packageVersion = EditorGUILayout.TextField("Next Release", _packageVersion);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Next Package Version", _packageVersion);
+            if (GUILayout.Button("Generate Next", GUILayout.Width(112))) GenerateNextPackageVersion();
+            EditorGUILayout.EndHorizontal();
             EditorGUILayout.LabelField("Release Notes");
             _releaseNotes = EditorGUILayout.TextArea(_releaseNotes, GUILayout.MinHeight(52));
 
             Section("Readiness");
             DrawGitReadiness();
-            DrawReadOnlyRow("Remote Release", "未查询 · Remote Verification 尚未接入");
+            DrawReadOnlyRow("Remote Release", "尚未运行 · Dry Run 会检查远端清单与资源完整性，不修改远端");
             DrawReadOnlyRow("HybridCLR", PlayerSettings.GetScriptingBackend(EditorUserBuildSettings.selectedBuildTargetGroup).ToString());
             DrawReadOnlyRow("AOT", "需选择兼容的 BaseRelease 后校验");
             DrawReadOnlyRow("YooAsset", string.IsNullOrWhiteSpace(_packageName)
@@ -189,14 +211,18 @@ namespace StellarFramework.Editor.Modules
         {
             Section("Build and Publish");
             EditorGUILayout.HelpBox(
-                "HybridCLR/YooAsset 构建、产物校验、Release Gate 与只读 Dry Run 引擎已实现。ToolsHub 仍要求完整生产 Collector、构建阶段配置及发布目标后才会开放执行；不会把未配置流程显示为成功。",
+                "Build 执行 HybridCLR 编译/导出、YooAsset 构建和产物校验；Dry Run 继续运行 Release Gate 与只读远端校验。按钮会根据 SDK、BaseRelease、Collector 和目标配置显示具体阻塞原因。",
                 MessageType.Info);
+            DrawBaseReleasePicker();
             DrawFirstUseSetup();
+            _architecture = EditorGUILayout.TextField("Player Architecture", _architecture);
+            _hotUpdateAssetOutputRoot = EditorGUILayout.TextField("HotUpdate Assets Root", _hotUpdateAssetOutputRoot);
+            _isMajorHotPatch = EditorGUILayout.Toggle("Major Hot Patch", _isMajorHotPatch);
             DrawMainActions();
             GUILayout.Space(12);
-            DrawReadOnlyRow("Compile / Export / YooAsset", "由配置完整的发布流水线执行");
+            DrawReadOnlyRow("Compile / Export / YooAsset", "Build、Dry Run 与 Build & Publish 的本地阶段");
             DrawReadOnlyRow("Artifact Validation", "Manifest · DLL SHA256 · Entry · BaseRelease AOT · YooAsset 输出");
-            DrawReadOnlyRow("Release Gate / Dry Run", "执行器已实现 · 等待完整生产构建与目标配置");
+            DrawReadOnlyRow("Release Gate / Dry Run", "Dry Run 执行 Gate 与远端只读完整性验证；Android 会执行完整 Player Gate");
         }
 
         private void DrawFirstUseSetup()
@@ -287,6 +313,15 @@ namespace StellarFramework.Editor.Modules
             profile.FallbackHostServer = EditorGUILayout.TextField("Fallback Host Server", profile.FallbackHostServer ?? string.Empty);
             profile.RemoteRoot = EditorGUILayout.TextField("Remote Root", profile.RemoteRoot ?? string.Empty);
             profile.PublishTarget = EditorGUILayout.TextField("Publish Target", profile.PublishTarget ?? string.Empty);
+            if (string.Equals(profile.PublishTarget, "S3Compatible", StringComparison.Ordinal))
+            {
+                profile.S3ServiceEndpoint = EditorGUILayout.TextField("S3 Service Endpoint", profile.S3ServiceEndpoint ?? string.Empty);
+                profile.S3Bucket = EditorGUILayout.TextField("S3 Bucket", profile.S3Bucket ?? string.Empty);
+                profile.S3Region = EditorGUILayout.TextField("S3 Region", string.IsNullOrWhiteSpace(profile.S3Region) ? "us-east-1" : profile.S3Region);
+                string[] s3Errors = ValidateS3Profile(profile);
+                for (int index = 0; index < s3Errors.Length; index++)
+                    EditorGUILayout.HelpBox(s3Errors[index], MessageType.Error);
+            }
             if (string.Equals(profile.PublishTarget, "LocalFolder", StringComparison.Ordinal))
             {
                 EditorGUILayout.BeginHorizontal();
@@ -320,7 +355,7 @@ namespace StellarFramework.Editor.Modules
             EditorGUILayout.LabelField("Credential", string.IsNullOrEmpty(environmentVariableName)
                 ? "Anonymous / no credential profile"
                 : hasCredential ? environmentVariableName + " is set" : environmentVariableName + " is missing");
-            EditorGUILayout.HelpBox("Only profile settings are stored in project-scoped EditorPrefs. Secret values are read at runtime from the environment and are never saved or displayed.", MessageType.None);
+            EditorGUILayout.HelpBox("Profile settings are stored in project-scoped EditorPrefs. S3 credentials are read from the named environment variable as JSON with accessKeyId and secretAccessKey fields; secret values are never saved or displayed.", MessageType.None);
             EditorGUILayout.HelpBox("LocalFolderRoot stores only a local mount path. Publisher still requires the project-specific build stages, BaseRelease and release-gate configuration before execution.", MessageType.None);
 
             if (GUILayout.Button("Save Environment Profiles")) SaveEnvironmentProfiles();
@@ -355,8 +390,7 @@ namespace StellarFramework.Editor.Modules
                 EditorGUILayout.LabelField(
                     $"Change {record.ChangeClassification?.Safety ?? "Unknown"} · Gate {record.GateResult} · Bundles {record.BundleCount} · {record.TotalBytes:N0} bytes",
                     EditorStyles.wordWrappedMiniLabel);
-                using (new EditorGUI.DisabledScope(true))
-                    GUILayout.Button(new GUIContent("Rollback", "Rollback service is implemented; ToolsHub enables it after the matching remote target and host verifier are configured."), GUILayout.Width(100));
+                DrawRollbackControls(record);
                 EditorGUILayout.EndVertical();
             }
             if (_historyRecords.Count > count)
@@ -378,17 +412,110 @@ namespace StellarFramework.Editor.Modules
             }
         }
 
+        private void DrawRollbackControls(HotUpdateReleaseRecord current)
+        {
+            if (current.Status != HotUpdateReleaseRecordStatus.Active) return;
+
+            HotUpdateReleaseRecord[] candidates = _historyRecords
+                .Where(record => record.Status != HotUpdateReleaseRecordStatus.Active &&
+                                 record.Platform == current.Platform &&
+                                 string.Equals(record.Environment, current.Environment, StringComparison.Ordinal) &&
+                                 string.Equals(record.PackageName, current.PackageName, StringComparison.Ordinal) &&
+                                 !string.Equals(record.ReleaseId, current.ReleaseId, StringComparison.Ordinal))
+                .ToArray();
+            if (candidates.Length == 0)
+            {
+                EditorGUILayout.LabelField("Rollback", "No compatible historical release is recorded.");
+                return;
+            }
+
+            HotUpdateEnvironmentKind environment;
+            if (!Enum.TryParse(current.Environment, false, out environment) ||
+                !Enum.IsDefined(typeof(HotUpdateEnvironmentKind), environment))
+            {
+                EditorGUILayout.HelpBox("Rollback is blocked because this release has an unknown environment.", MessageType.Error);
+                return;
+            }
+
+            HotUpdateEnvironmentProfile profile = FindProfile(environment) ?? HotUpdateEnvironmentProfile.CreateDefault(environment);
+            string targetError = GetTargetReadinessError(profile);
+            string[] labels = candidates.Select(record =>
+                $"{record.PackageVersion} · {record.Status} · {record.CreatedAtUtc.ToUniversalTime():yyyy-MM-dd HH:mm} UTC").ToArray();
+            if (!_rollbackSelections.TryGetValue(current.ReleaseId, out int selectedIndex)) selectedIndex = 0;
+            selectedIndex = Mathf.Clamp(selectedIndex, 0, candidates.Length - 1);
+            selectedIndex = EditorGUILayout.Popup("Restore Release", selectedIndex, labels);
+            _rollbackSelections[current.ReleaseId] = selectedIndex;
+
+            using (new EditorGUI.DisabledScope(_operationBusy || !string.IsNullOrEmpty(targetError)))
+            {
+                if (GUILayout.Button("Rollback", GUILayout.Width(100)) &&
+                    EditorUtility.DisplayDialog(
+                        "Rollback HotUpdate",
+                        $"Restore PackageVersion from {current.PackageVersion} to {candidates[selectedIndex].PackageVersion} for {current.Environment}? The remote pointer will change after integrity checks.",
+                        "Rollback", "Cancel"))
+                {
+                    HotUpdateReleaseRecord restored = candidates[selectedIndex];
+                    StartOperation("Verifying historical release and restoring PackageVersion…",
+                        token => RunRollbackAsync(current, restored, profile, token));
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(targetError))
+                EditorGUILayout.HelpBox("Rollback is blocked: " + targetError, MessageType.Warning);
+        }
+
+        private async Task<string> RunRollbackAsync(
+            HotUpdateReleaseRecord current,
+            HotUpdateReleaseRecord restored,
+            HotUpdateEnvironmentProfile profile,
+            CancellationToken cancellationToken)
+        {
+            var history = HotUpdateReleaseHistoryRepository.CreateForProject(GetProjectRoot());
+            var service = new HotUpdateReleaseRollbackService(
+                history,
+                CreatePublishTarget(profile),
+                new HotUpdateRemoteValidator(profile));
+            HotUpdateRollbackResult result = await service.RollbackAsync(
+                current.ReleaseId, restored.ReleaseId, cancellationToken);
+            if (!result.Success) throw new InvalidOperationException(result.Error);
+            return $"Rollback verified: {restored.PackageName} {restored.PackageVersion} is active in {restored.Environment}.";
+        }
+
+        private string GetTargetReadinessError(HotUpdateEnvironmentProfile profile)
+        {
+            if (profile == null) return "Environment profile is missing.";
+            HotUpdateEnvironmentProfileValidationResult validation = profile.Validate();
+            if (!validation.IsValid) return string.Join(Environment.NewLine, validation.Errors);
+
+            if (string.Equals(profile.PublishTarget, "LocalFolder", StringComparison.Ordinal))
+            {
+                if (string.IsNullOrWhiteSpace(profile.LocalFolderRoot)) return "Set the mounted LocalFolder publish root.";
+            }
+            else if (string.Equals(profile.PublishTarget, "S3Compatible", StringComparison.Ordinal))
+            {
+                string[] errors = ValidateS3Profile(profile);
+                if (errors.Length > 0) return string.Join(Environment.NewLine, errors);
+                if (!EnvironmentVariableCredentialProvider.TryGetEnvironmentVariableName(
+                        profile.CredentialProfileName, out string variableName) ||
+                    string.IsNullOrEmpty(Environment.GetEnvironmentVariable(variableName)))
+                    return "S3 credentials are not available from the configured environment variable.";
+            }
+            else
+            {
+                return "Publish Target must be LocalFolder or S3Compatible.";
+            }
+
+            return null;
+        }
+
         private void DrawAdvanced()
         {
             Section("Advanced Tools");
             EditorGUILayout.HelpBox("底层操作只在高级区显示。导出与构建按钮在目标/BaseRelease/生产 Collector 完整绑定前禁用。", MessageType.Warning);
 
-            using (new EditorGUI.DisabledScope(true))
-            {
-                GUILayout.Button(new GUIContent("HybridCLR Export", "Requires a selected compatible BaseRelease and complete publish context."));
-                GUILayout.Button(new GUIContent("YooAsset Build", "Requires a production collector configuration; the verification-only package is not accepted."));
-                GUILayout.Button(new GUIContent("Run Gate", "Release Gate execution is integrated in a later phase."));
-            }
+            EditorGUILayout.HelpBox("HybridCLR compile/export, YooAsset build, artifact validation and Release Gate run as ordered stages from Build, Dry Run and Build & Publish.", MessageType.Info);
+            _unitySkillsUrl = EditorGUILayout.TextField("UnitySkills URL", _unitySkillsUrl);
+            if (GUILayout.Button("Save Advanced Settings")) SaveLocalInputs();
 
             if (GUILayout.Button("Open Build Folder"))
             {
@@ -399,7 +526,12 @@ namespace StellarFramework.Editor.Modules
 
             if (GUILayout.Button("View Manifest"))
             {
-                const string manifestPath = "Assets/GameHotUpdate/Manifest/HotUpdateManifest.json";
+                string manifestPath = _hotUpdateAssetOutputRoot.Replace('\\', '/').TrimEnd('/') + "/Manifest/HotUpdateManifest.json";
+                if (!IsSafeAssetRoot(_hotUpdateAssetOutputRoot))
+                {
+                    EditorUtility.DisplayDialog("HotUpdate Manifest", "Set a safe HotUpdate Assets Root inside Assets/ first.", "OK");
+                    return;
+                }
                 UnityEngine.Object manifest = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(manifestPath);
                 if (manifest == null)
                     EditorUtility.DisplayDialog("HotUpdate Manifest", $"Manifest was not found at {manifestPath}.", "OK");
@@ -420,14 +552,497 @@ namespace StellarFramework.Editor.Modules
 
         private void DrawMainActions()
         {
+            string buildBlocker = GetBuildReadinessError(out _);
+            string publishBlocker = string.IsNullOrEmpty(buildBlocker)
+                ? GetPublishReadinessError(GetSelectedProfile())
+                : buildBlocker;
+
             EditorGUILayout.BeginHorizontal();
-            using (new EditorGUI.DisabledScope(true))
+            using (new EditorGUI.DisabledScope(_operationBusy || !string.IsNullOrEmpty(publishBlocker)))
             {
-                GUILayout.Button(new GUIContent("Dry Run", "Requires a production YooAsset Collector, configured build stages and a publish target."), GUILayout.Height(30));
-                GUILayout.Button(new GUIContent("Build", "A configured build transaction is added after the UI phase."), GUILayout.Height(30));
-                GUILayout.Button(new GUIContent("Build & Publish", "Publish target and release gate are not yet configured."), GUILayout.Height(30));
+                if (GUILayout.Button(new GUIContent("Dry Run", "Build, validate, run the required gate, and inspect remote files without uploading or changing the version pointer."), GUILayout.Height(30)))
+                    RunDryRun();
+            }
+            using (new EditorGUI.DisabledScope(_operationBusy || !string.IsNullOrEmpty(buildBlocker)))
+            {
+                if (GUILayout.Button(new GUIContent("Build", "Compile HotUpdate, export DLL/AOT assets, build the YooAsset package and validate local artifacts."), GUILayout.Height(30)))
+                    RunBuildOnly();
+            }
+            using (new EditorGUI.DisabledScope(_operationBusy || !string.IsNullOrEmpty(publishBlocker)))
+            {
+                if (GUILayout.Button(new GUIContent("Build & Publish", "Upload immutable files, verify remote content, then atomically update the PackageVersion pointer."), GUILayout.Height(30)))
+                    RunBuildAndPublish();
             }
             EditorGUILayout.EndHorizontal();
+
+            if (_operationBusy)
+            {
+                if (GUILayout.Button("Cancel Current Operation", GUILayout.Height(24)))
+                    _operationCancellation?.Cancel();
+            }
+            else if (!string.IsNullOrWhiteSpace(buildBlocker))
+            {
+                EditorGUILayout.HelpBox("Build is blocked: " + buildBlocker, MessageType.Warning);
+            }
+            else if (!string.IsNullOrWhiteSpace(publishBlocker))
+            {
+                EditorGUILayout.HelpBox("Dry Run and Build & Publish are blocked: " + publishBlocker, MessageType.Warning);
+            }
+        }
+
+        private void DrawOperationStatus()
+        {
+            if (_operationBusy)
+                EditorGUILayout.HelpBox(_operationStatus, MessageType.Info);
+            else if (!string.IsNullOrWhiteSpace(_operationError))
+                EditorGUILayout.HelpBox(_operationError, MessageType.Error);
+            else if (!string.IsNullOrWhiteSpace(_operationStatus))
+                EditorGUILayout.HelpBox(_operationStatus, MessageType.Info);
+        }
+
+        private void GenerateNextPackageVersion()
+        {
+            try
+            {
+                RefreshHistory();
+                string[] existingVersions = _historyRecords
+                    .Where(record => string.Equals(record.PackageName, _packageName, StringComparison.Ordinal) &&
+                                     record.Platform == EditorUserBuildSettings.activeBuildTarget)
+                    .Select(record => record.PackageVersion)
+                    .ToArray();
+                _packageVersion = new DailyHotUpdateVersionPolicy()
+                    .CreateNextVersion(DateTime.UtcNow, existingVersions);
+                _operationStatus = "Next PackageVersion generated from UTC date and recorded package history.";
+                _operationError = string.Empty;
+                SaveLocalInputs();
+            }
+            catch (Exception exception)
+            {
+                _operationError = "PackageVersion could not be generated: " + exception.Message;
+            }
+        }
+
+        private string GetBuildReadinessError(out HotUpdateBaseRelease selectedRelease)
+        {
+            selectedRelease = null;
+            BuildTarget target = EditorUserBuildSettings.activeBuildTarget;
+            if (target == BuildTarget.NoTarget)
+                return "Select a Unity BuildTarget first.";
+            if (!IsSafeBusinessPackageName(_packageName))
+                return "Enter a path-safe YooAsset business package name that does not contain 'verification'.";
+            if (!IsSafeAssetRoot(_hotUpdateAssetOutputRoot))
+                return "HotUpdate Assets Root must be a safe folder inside Assets/.";
+
+            string adapterError = HotUpdatePublisherBuildAdapters.GetReadinessError();
+            if (!string.IsNullOrEmpty(adapterError)) return adapterError;
+
+            HotUpdatePublisherCollectorStatus collector = HotUpdatePublisherCollectorStatus.Check(_packageName);
+            if (!collector.IsReady) return collector.Message;
+
+            try
+            {
+                HotUpdateBaseReleaseRequirements requirements = CreateBaseReleaseRequirements(
+                    target, _baseAppVersion, _architecture);
+                if (requirements.ScriptingBackend != ScriptingImplementation.IL2CPP)
+                    return "The active Player scripting backend is not IL2CPP. Select the matching IL2CPP BaseRelease configuration before building.";
+
+                var repository = new HotUpdateBaseReleaseRepository();
+                selectedRelease = repository.LoadAndValidate(target, _baseAppVersion, requirements);
+                return null;
+            }
+            catch (Exception exception)
+            {
+                return "No compatible BaseRelease is selected: " + exception.Message;
+            }
+        }
+
+        private string GetPublishReadinessError(HotUpdateEnvironmentProfile profile)
+        {
+            string buildError = GetBuildReadinessError(out _);
+            if (!string.IsNullOrEmpty(buildError)) return buildError;
+            if (profile == null) return "Select a publish environment.";
+
+            HotUpdateEnvironmentProfileValidationResult profileValidation = profile.Validate();
+            if (!profileValidation.IsValid)
+                return string.Join(Environment.NewLine, profileValidation.Errors);
+
+            if (string.Equals(profile.PublishTarget, "LocalFolder", StringComparison.Ordinal))
+            {
+                if (string.IsNullOrWhiteSpace(profile.LocalFolderRoot))
+                    return "Set the mounted LocalFolder publish root.";
+            }
+            else if (string.Equals(profile.PublishTarget, "S3Compatible", StringComparison.Ordinal))
+            {
+                string[] errors = ValidateS3Profile(profile);
+                if (errors.Length > 0) return string.Join(Environment.NewLine, errors);
+                if (!EnvironmentVariableCredentialProvider.TryGetEnvironmentVariableName(
+                        profile.CredentialProfileName, out string variableName))
+                    return "Set a valid S3 credential profile name.";
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(variableName)))
+                    return "S3 credentials are missing from environment variable " + variableName + ".";
+            }
+            else
+            {
+                return "Publish Target must be LocalFolder or S3Compatible.";
+            }
+
+            if (!Uri.TryCreate(_unitySkillsUrl, UriKind.Absolute, out Uri unitySkillsUri) ||
+                (unitySkillsUri.Scheme != Uri.UriSchemeHttp && unitySkillsUri.Scheme != Uri.UriSchemeHttps))
+                return "UnitySkills URL must be an absolute HTTP(S) URL.";
+
+            if (string.Equals(profile.EnvironmentId, nameof(HotUpdateEnvironmentKind.Production), StringComparison.Ordinal))
+            {
+                try
+                {
+                    _gitSnapshot = new GitHotUpdateSnapshotProvider(GetProjectRoot()).ReadSnapshot();
+                    if (_gitSnapshot.IsDirty)
+                        return "Production publishing is blocked while the Dev Git working tree has staged, unstaged or untracked changes.";
+                }
+                catch (Exception exception)
+                {
+                    return "Production Git preflight failed: " + exception.Message;
+                }
+            }
+
+            return null;
+        }
+
+        private static string[] ValidateS3Profile(HotUpdateEnvironmentProfile profile)
+        {
+            var errors = new List<string>();
+            if (!Uri.TryCreate(profile.S3ServiceEndpoint, UriKind.Absolute, out Uri endpoint) ||
+                (endpoint.Scheme != Uri.UriSchemeHttp && endpoint.Scheme != Uri.UriSchemeHttps) ||
+                !string.IsNullOrEmpty(endpoint.UserInfo) || !string.IsNullOrEmpty(endpoint.Query) ||
+                !string.IsNullOrEmpty(endpoint.Fragment))
+                errors.Add("S3 Service Endpoint must be an absolute HTTP(S) URL without credentials, query or fragment.");
+            else if (endpoint.Scheme != Uri.UriSchemeHttps && !endpoint.IsLoopback)
+                errors.Add("S3 Service Endpoint must use HTTPS unless it points to loopback.");
+
+            string bucket = profile.S3Bucket ?? string.Empty;
+            if (bucket.Length < 3 || bucket.Length > 63 || bucket.StartsWith(".", StringComparison.Ordinal) ||
+                bucket.EndsWith(".", StringComparison.Ordinal) || bucket.StartsWith("-", StringComparison.Ordinal) ||
+                bucket.EndsWith("-", StringComparison.Ordinal) || bucket.Contains("..") || bucket.Contains(".-") || bucket.Contains("-."))
+                errors.Add("S3 Bucket must be a valid 3–63 character bucket name.");
+            else
+            {
+                for (int index = 0; index < bucket.Length; index++)
+                {
+                    char character = bucket[index];
+                    if (!((character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') ||
+                          character == '.' || character == '-'))
+                    {
+                        errors.Add("S3 Bucket may contain only lowercase letters, digits, dots and hyphens.");
+                        break;
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(profile.S3Region) || profile.S3Region.Contains("/") || profile.S3Region.Contains(" "))
+                errors.Add("S3 Region is invalid.");
+            if (string.IsNullOrWhiteSpace(profile.CredentialProfileName))
+                errors.Add("Credential Profile Name is required for S3Compatible publishing.");
+            return errors.ToArray();
+        }
+
+        private static bool IsSafeBusinessPackageName(string packageName)
+        {
+            if (string.IsNullOrWhiteSpace(packageName) || packageName.Length > 64 ||
+                packageName.IndexOf("verification", StringComparison.OrdinalIgnoreCase) >= 0)
+                return false;
+            for (int index = 0; index < packageName.Length; index++)
+            {
+                char character = packageName[index];
+                bool letter = (character >= 'A' && character <= 'Z') || (character >= 'a' && character <= 'z');
+                if (!letter && !(character >= '0' && character <= '9') && character != '_' && character != '-')
+                    return false;
+                if (index == 0 && !letter && !(character >= '0' && character <= '9')) return false;
+            }
+            return true;
+        }
+
+        private static bool IsSafeAssetRoot(string assetRoot)
+        {
+            if (string.IsNullOrWhiteSpace(assetRoot)) return false;
+            string normalized = assetRoot.Replace('\\', '/').TrimEnd('/');
+            if (!normalized.StartsWith("Assets/", StringComparison.Ordinal) || normalized.Contains(":") || normalized.Contains("%"))
+                return false;
+            string[] segments = normalized.Split('/');
+            for (int index = 0; index < segments.Length; index++)
+                if (string.IsNullOrWhiteSpace(segments[index]) || segments[index] == "." || segments[index] == "..") return false;
+
+            string candidate = Path.GetFullPath(Path.Combine(GetProjectRoot(), normalized.Replace('/', Path.DirectorySeparatorChar)));
+            string assets = Path.GetFullPath(Application.dataPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            return candidate.StartsWith(assets, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static HotUpdateBaseReleaseRequirements CreateBaseReleaseRequirements(
+            BuildTarget target, string baseAppVersion, string architecture)
+        {
+            BuildTargetGroup targetGroup = UnityEditor.BuildPipeline.GetBuildTargetGroup(target);
+            ScriptingImplementation backend = PlayerSettings.GetScriptingBackend(targetGroup);
+            if (target == BuildTarget.Android)
+            {
+                AndroidArchitecture expected = architecture == "ARM64" ? AndroidArchitecture.ARM64 :
+                    architecture == "ARMv7" ? AndroidArchitecture.ARMv7 :
+                    architecture == "x86" ? AndroidArchitecture.X86 :
+                    architecture == "x86_64" ? AndroidArchitecture.X86_64 : 0;
+                if (expected == 0 || PlayerSettings.Android.targetArchitectures != expected)
+                    throw new InvalidOperationException("For Android HotUpdate, select exactly the Android architecture recorded in the BaseRelease. The current Android architecture setting does not match.");
+            }
+
+            string hybridCLRVersion = HotUpdatePublisherBuildAdapters.GetHybridCLRPackageVersion();
+            UPMInfo yooAsset = UPMInfo.GetAllRegisteredPackages()
+                .FirstOrDefault(item => string.Equals(item.name, "com.tuyoogame.yooasset", StringComparison.Ordinal));
+            if (yooAsset == null || string.IsNullOrWhiteSpace(yooAsset.version))
+                throw new InvalidOperationException("YooAsset package version could not be read from the Unity Package Manager.");
+
+            return new HotUpdateBaseReleaseRequirements
+            {
+                BaseAppVersion = (baseAppVersion ?? string.Empty).Trim(),
+                Platform = target,
+                Architecture = (architecture ?? string.Empty).Trim(),
+                UnityVersion = Application.unityVersion,
+                HybridCLRVersion = hybridCLRVersion,
+                YooAssetVersion = yooAsset.version,
+                ScriptingBackend = backend
+            };
+        }
+
+        private HotUpdatePublishContext CreatePublishContext(
+            HotUpdateEnvironmentProfile profile,
+            out HotUpdateBaseReleaseRepository baseReleaseRepository,
+            out HotUpdateReleaseHistoryRepository historyRepository)
+        {
+            string readinessError = GetBuildReadinessError(out _);
+            if (!string.IsNullOrEmpty(readinessError)) throw new InvalidOperationException(readinessError);
+
+            BuildTarget target = EditorUserBuildSettings.activeBuildTarget;
+            HotUpdateBaseReleaseRequirements requirements = CreateBaseReleaseRequirements(target, _baseAppVersion, _architecture);
+            baseReleaseRepository = new HotUpdateBaseReleaseRepository();
+            historyRepository = HotUpdateReleaseHistoryRepository.CreateForProject(GetProjectRoot());
+            RefreshHistory();
+
+            string[] existingVersions = _historyRecords
+                .Where(record => string.Equals(record.PackageName, _packageName, StringComparison.Ordinal) && record.Platform == target)
+                .Select(record => record.PackageVersion)
+                .ToArray();
+            _packageVersion = new DailyHotUpdateVersionPolicy().CreateNextVersion(DateTime.UtcNow, existingVersions);
+            SaveLocalInputs();
+
+            HotUpdateReleaseRecord activeRecord = _historyRecords.FirstOrDefault(record =>
+                record.Status == HotUpdateReleaseRecordStatus.Active &&
+                record.Platform == target &&
+                string.Equals(record.Environment, profile.EnvironmentId, StringComparison.Ordinal) &&
+                string.Equals(record.PackageName, _packageName, StringComparison.Ordinal));
+
+            var context = new HotUpdatePublishContext
+            {
+                Platform = target,
+                Environment = profile.EnvironmentId,
+                BaseAppVersion = requirements.BaseAppVersion,
+                PackageName = _packageName.Trim(),
+                PackageVersion = _packageVersion,
+                ReleaseId = "release_" + DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", System.Globalization.CultureInfo.InvariantCulture) + "_" + Guid.NewGuid().ToString("N").Substring(0, 8),
+                ReleaseNotes = _releaseNotes ?? string.Empty,
+                HotUpdateAssetOutputRoot = _hotUpdateAssetOutputRoot.Replace('\\', '/').TrimEnd('/'),
+                HotUpdateManifestAssetPath = _hotUpdateAssetOutputRoot.Replace('\\', '/').TrimEnd('/') + "/Manifest/HotUpdateManifest.json",
+                YooAssetBuildOutputRoot = Path.Combine(GetProjectRoot(), "BuildArtifacts", "HotUpdate", "YooAsset"),
+                YooAssetCompression = "LZ4",
+                DevelopmentBuild = EditorUserBuildSettings.development,
+                IsMajorHotPatch = _isMajorHotPatch,
+                PublishTarget = profile.PublishTarget,
+                ServerRoot = profile.RemoteRoot,
+                ExpectedCurrentPackageVersion = activeRecord?.PackageVersion ?? string.Empty
+            };
+            context.SelectBaseRelease(baseReleaseRepository, requirements);
+            return context;
+        }
+
+        private HotUpdateChangeClassifier CreateChangeClassifier()
+        {
+            string projectRoot = GetProjectRoot();
+            return new HotUpdateChangeClassifier(
+                new GitHotUpdateWorkspaceChangeSource(projectRoot),
+                new UnityHotUpdateChangeFactsProvider(projectRoot));
+        }
+
+        private static IHotUpdateBuildAdapter CreateBuildAdapter(HotUpdateBaseReleaseRepository repository)
+        {
+            return HotUpdatePublisherBuildAdapters.Create(repository);
+        }
+
+        private HotUpdatePublisherWorkflow CreateWorkflow(
+            HotUpdatePublishContext context,
+            HotUpdateEnvironmentProfile profile,
+            HotUpdateBaseReleaseRepository baseReleaseRepository,
+            HotUpdateReleaseHistoryRepository historyRepository)
+        {
+            IHotUpdatePublishTarget target = CreatePublishTarget(profile);
+            var remoteVerifier = new HotUpdateRemoteValidator(profile);
+            var fastGate = new PowerShellHotUpdateFastReleaseGateRunner(
+                GetProjectRoot(), _unitySkillsUrl, new SystemHotUpdateGateProcessRunner());
+            IHotUpdateFullReleaseGateRunner fullGate = context.Platform == BuildTarget.Android
+                ? new PowerShellHotUpdateAndroidFullReleaseGateRunner(
+                    GetProjectRoot(), _unitySkillsUrl, new SystemHotUpdateGateProcessRunner())
+                : null;
+
+            return HotUpdatePublisherWorkflowAssembly.Create(
+                new GitHotUpdateSnapshotProvider(GetProjectRoot()),
+                context,
+                CreateChangeClassifier(),
+                CreateBuildAdapter(baseReleaseRepository),
+                new HotUpdateArtifactValidator(baseReleaseRepository),
+                fastGate,
+                fullGate,
+                target,
+                remoteVerifier,
+                historyRepository);
+        }
+
+        private static IHotUpdatePublishTarget CreatePublishTarget(HotUpdateEnvironmentProfile profile)
+        {
+            if (string.Equals(profile.PublishTarget, "LocalFolder", StringComparison.Ordinal))
+                return new LocalFolderPublishTarget(profile);
+            if (string.Equals(profile.PublishTarget, "S3Compatible", StringComparison.Ordinal))
+            {
+                return new S3CompatiblePublishTarget(
+                    profile,
+                    new S3CompatiblePublishTargetOptions
+                    {
+                        ServiceEndpoint = new Uri(profile.S3ServiceEndpoint),
+                        Bucket = profile.S3Bucket,
+                        Region = profile.S3Region
+                    },
+                    new EnvironmentVariableCredentialProvider());
+            }
+            throw new InvalidOperationException("Publish Target must be LocalFolder or S3Compatible.");
+        }
+
+        private void RunBuildOnly()
+        {
+            HotUpdateEnvironmentProfile profile = GetSelectedProfile();
+            StartOperation("Building and validating HotUpdate artifacts…", async token =>
+            {
+                HotUpdatePublishContext context = CreatePublishContext(profile, out HotUpdateBaseReleaseRepository repository, out _);
+                HotUpdatePublishResult result = await HotUpdatePublisherBuildOnly.RunAsync(
+                    context,
+                    new GitHotUpdateSnapshotProvider(GetProjectRoot()),
+                    CreateChangeClassifier(),
+                    CreateBuildAdapter(repository),
+                    new HotUpdateArtifactValidator(repository),
+                    token);
+                if (!result.Success)
+                    throw new InvalidOperationException($"Build failed at {result.FailedStage}: {result.Error}");
+                return $"Build and artifact validation passed for {context.PackageName} {context.PackageVersion}.";
+            });
+        }
+
+        private void RunDryRun()
+        {
+            HotUpdateEnvironmentProfile profile = GetSelectedProfile();
+            StartOperation("Running build, gate and read-only remote inspection…", async token =>
+            {
+                HotUpdatePublishContext context = CreatePublishContext(profile, out HotUpdateBaseReleaseRepository repository, out HotUpdateReleaseHistoryRepository history);
+                HotUpdatePublisherWorkflow workflow = CreateWorkflow(context, profile, repository, history);
+                HotUpdateDryRunResult result = await workflow.DryRun.RunAsync(context, token);
+                if (!result.Success)
+                    throw new InvalidOperationException($"Dry Run failed at {result.FailedStage}: {result.Error}");
+                return $"Dry Run passed for {result.PackageVersion}: {result.NewCount} new files, {result.ReuseCount} reusable files, {result.TotalBytes:N0} total bytes. No remote files or version pointer were changed.";
+            });
+        }
+
+        private void RunBuildAndPublish()
+        {
+            HotUpdateEnvironmentProfile profile = GetSelectedProfile();
+            if (!EditorUtility.DisplayDialog(
+                    "Build & Publish HotUpdate",
+                    $"This will build {profile.EnvironmentId}/{_packageName}, upload immutable files to '{profile.PublishTarget}', verify the remote content and update PackageVersion. Continue?",
+                    "Build & Publish", "Cancel"))
+                return;
+
+            StartOperation("Building and publishing HotUpdate…", async token =>
+            {
+                HotUpdatePublishContext context = CreatePublishContext(profile, out HotUpdateBaseReleaseRepository repository, out HotUpdateReleaseHistoryRepository history);
+                HotUpdatePublisherWorkflow workflow = CreateWorkflow(context, profile, repository, history);
+                HotUpdatePublishResult result = await workflow.Pipeline.RunAsync(context, token);
+                if (!result.Success)
+                    throw new InvalidOperationException($"Publish failed at {result.FailedStage}: {result.Error}");
+                return $"Published {result.ReleaseRecord?.PackageName} {result.ReleaseRecord?.PackageVersion} to {profile.EnvironmentId}; ReleaseId={result.ReleaseRecord?.ReleaseId}.";
+            });
+        }
+
+        private void StartOperation(string initialStatus, Func<CancellationToken, Task<string>> operation)
+        {
+            if (_operationBusy) return;
+            _operationBusy = true;
+            _operationStatus = initialStatus;
+            _operationError = string.Empty;
+            _operationCancellation = new CancellationTokenSource();
+            Window?.Repaint();
+            CompleteOperationAsync(operation, _operationCancellation.Token);
+        }
+
+        private async void CompleteOperationAsync(Func<CancellationToken, Task<string>> operation, CancellationToken cancellationToken)
+        {
+            try
+            {
+                _operationStatus = await operation(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _operationStatus = "Operation cancelled.";
+            }
+            catch (Exception exception)
+            {
+                _operationError = exception.GetType().Name + ": " + exception.Message;
+                Debug.LogException(exception);
+            }
+            finally
+            {
+                _operationBusy = false;
+                _operationCancellation?.Dispose();
+                _operationCancellation = null;
+                RefreshHistory();
+                SaveLocalInputs();
+                SaveEnvironmentProfiles();
+                Window?.Repaint();
+            }
+        }
+
+        private void DrawBaseReleasePicker()
+        {
+            Section("Compatible BaseRelease");
+            var repository = new HotUpdateBaseReleaseRepository();
+            IReadOnlyList<HotUpdateBaseRelease> releases;
+            try
+            {
+                releases = repository.List(EditorUserBuildSettings.activeBuildTarget);
+            }
+            catch (Exception exception)
+            {
+                EditorGUILayout.HelpBox("BaseRelease repository could not be read: " + exception.Message, MessageType.Error);
+                return;
+            }
+
+            if (releases.Count == 0)
+            {
+                DrawReadOnlyRow("Build Target", EditorUserBuildSettings.activeBuildTarget.ToString());
+                EditorGUILayout.HelpBox("No BaseRelease is recorded for the active BuildTarget. Create a BaseRelease from a real IL2CPP Player configuration before building a Hot Patch.", MessageType.Warning);
+                return;
+            }
+
+            string[] labels = releases.Select(item => $"{item.BaseAppVersion} · {item.Architecture} · {item.CreatedAt}").ToArray();
+            int selectedIndex = Array.FindIndex(releases.ToArray(), item => string.Equals(item.BaseAppVersion, _baseAppVersion, StringComparison.Ordinal));
+            int newIndex = EditorGUILayout.Popup("BaseRelease", Math.Max(0, selectedIndex), labels);
+            if (newIndex >= 0 && newIndex < releases.Count && newIndex != selectedIndex)
+            {
+                _baseAppVersion = releases[newIndex].BaseAppVersion;
+                _architecture = releases[newIndex].Architecture;
+                SaveLocalInputs();
+            }
+
+            if (selectedIndex < 0)
+                EditorGUILayout.HelpBox("Select the exact Base App version that will receive this Hot Patch.", MessageType.Info);
         }
 
         private void DrawGitReadiness()
@@ -565,6 +1180,9 @@ namespace StellarFramework.Editor.Modules
             EditorPrefs.SetString(PrefsPrefix + suffix + ".packageName", _packageName ?? string.Empty);
             EditorPrefs.SetString(PrefsPrefix + suffix + ".packageVersion", _packageVersion ?? string.Empty);
             EditorPrefs.SetString(PrefsPrefix + suffix + ".releaseNotes", _releaseNotes ?? string.Empty);
+            EditorPrefs.SetString(PrefsPrefix + suffix + ".assetOutputRoot", _hotUpdateAssetOutputRoot ?? string.Empty);
+            EditorPrefs.SetString(PrefsPrefix + suffix + ".architecture", _architecture ?? string.Empty);
+            EditorPrefs.SetString(PrefsPrefix + suffix + ".unitySkillsUrl", _unitySkillsUrl ?? string.Empty);
         }
     }
 }

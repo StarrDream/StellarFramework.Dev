@@ -164,4 +164,14 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             return HotUpdatePublishStepResult.Failed(HotUpdatePublishErrorCode.StageFailed, message);
         }
     }
+
+    /// <summary>Registers the optional YooAsset SDK implementation with the SDK-neutral Publisher Hub.</summary>
+    [InitializeOnLoad]
+    internal static class HotUpdatePublisherYooAssetAdapterRegistration
+    {
+        static HotUpdatePublisherYooAssetAdapterRegistration()
+        {
+            HotUpdatePublisherBuildAdapters.YooAssetFactory = () => new YooAssetHotUpdateBuildAdapter();
+        }
+    }
 }

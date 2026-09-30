@@ -26,11 +26,6 @@ namespace StellarFramework.Tests.PlayMode
         [Timeout(TimeoutMs + 5000)]
         public IEnumerator PackedModeLoadsPrefabThroughResKit()
         {
-            yield return RunPackedModeLoadsPrefabThroughResKit().ToCoroutine();
-        }
-
-        private static async UniTask RunPackedModeLoadsPrefabThroughResKit()
-        {
             AddressableAssetSettings addressableSettings =
                 AddressableAssetSettingsDefaultObject.Settings;
             Assert.That(addressableSettings, Is.Not.Null);
@@ -43,7 +38,6 @@ namespace StellarFramework.Tests.PlayMode
                 Is.GreaterThanOrEqualTo(0),
                 "Addressables Packed Play Mode builder is missing.");
 
-            IResLoader loader = null;
             try
             {
                 addressableSettings.ActivePlayModeDataBuilderIndex = packedBuilderIndex;
@@ -64,30 +58,10 @@ namespace StellarFramework.Tests.PlayMode
                 // Addressables asset loading/release, not any content-update workflow.
                 AddressablesResKitInstaller.Install();
 
-                using (var timeout = new CancellationTokenSource())
-                {
-                    timeout.CancelAfter(TimeoutMs);
-                    CancellationToken cancellationToken = timeout.Token;
-
-                    loader = StellarFramework.Res.ResKit.Allocate(
-                        ResLoaderRequest.Custom("Addressables", "PackedAddressablesPlayModeTests"));
-                    Assert.That(loader, Is.Not.Null);
-
-                    GameObject prefab = await loader.LoadAsync<GameObject>(
-                        TestPrefabAddress,
-                        cancellationToken);
-                    Assert.That(prefab, Is.Not.Null);
-                    Assert.That(prefab.name, Is.EqualTo("AddressablesTestPrefab"));
-                }
+                yield return LoadPrefabThroughResKit().ToCoroutine();
             }
             finally
             {
-                if (loader != null)
-                {
-                    loader.ReleaseAll();
-                    StellarFramework.Res.ResKit.Recycle(loader);
-                }
-
                 addressableSettings.ActivePlayModeDataBuilderIndex = previousBuilderIndex;
                 var previousBuilder = addressableSettings.GetDataBuilder(previousBuilderIndex);
                 if (previousBuilder != null &&
@@ -95,6 +69,36 @@ namespace StellarFramework.Tests.PlayMode
                 {
                     previousBuilder.BuildData<AddressablesPlayModeBuildResult>(
                         new AddressablesDataBuilderInput(addressableSettings));
+                }
+            }
+        }
+
+        private static async UniTask LoadPrefabThroughResKit()
+        {
+            using (var timeout = new CancellationTokenSource())
+            {
+                timeout.CancelAfter(TimeoutMs);
+                CancellationToken cancellationToken = timeout.Token;
+
+                IResLoader loader = StellarFramework.Res.ResKit.Allocate(
+                    ResLoaderRequest.Custom("Addressables", "PackedAddressablesPlayModeTests"));
+
+                try
+                {
+                    Assert.That(loader, Is.Not.Null);
+                    GameObject prefab = await loader.LoadAsync<GameObject>(
+                        TestPrefabAddress,
+                        cancellationToken);
+                    Assert.That(prefab, Is.Not.Null);
+                    Assert.That(prefab.name, Is.EqualTo("AddressablesTestPrefab"));
+                }
+                finally
+                {
+                    if (loader != null)
+                    {
+                        loader.ReleaseAll();
+                        StellarFramework.Res.ResKit.Recycle(loader);
+                    }
                 }
             }
         }

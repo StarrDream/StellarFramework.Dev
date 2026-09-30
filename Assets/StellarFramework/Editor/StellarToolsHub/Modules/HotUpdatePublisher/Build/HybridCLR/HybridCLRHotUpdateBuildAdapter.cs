@@ -183,4 +183,16 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             return Path.GetFullPath(Path.Combine(projectRoot, assetPath.Replace('/', Path.DirectorySeparatorChar)));
         }
     }
+
+    /// <summary>Registers the optional HybridCLR SDK implementation with the SDK-neutral Publisher Hub.</summary>
+    [InitializeOnLoad]
+    internal static class HotUpdatePublisherHybridCLRAdapterRegistration
+    {
+        static HotUpdatePublisherHybridCLRAdapterRegistration()
+        {
+            HotUpdatePublisherBuildAdapters.HybridCLRFactory = repository => new HybridCLRHotUpdateBuildAdapter(repository);
+            HotUpdatePublisherBuildAdapters.HybridCLRPackageVersionProvider = () =>
+                UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(CompileDllCommand).Assembly)?.version ?? string.Empty;
+        }
+    }
 }

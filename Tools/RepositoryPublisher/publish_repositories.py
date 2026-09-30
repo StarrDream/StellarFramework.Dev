@@ -29,6 +29,7 @@ GENERAL_README_EN_TEMPLATE = Path("Tools/RepositoryPublisher/Templates/StellarFr
 EXTENSIONS_README_TEMPLATE = Path("Tools/RepositoryPublisher/Templates/StellarFramework.Extensions.README.md")
 GENERAL_GITIGNORE_TEMPLATE = Path("Tools/RepositoryPublisher/Templates/StellarFramework.gitignore")
 EXTENSIONS_GITIGNORE_TEMPLATE = Path("Tools/RepositoryPublisher/Templates/StellarFramework.Extensions.gitignore")
+PUBLISHER_SCRIPT = Path("Tools/RepositoryPublisher/publish_repositories.py")
 
 
 class ReleaseError(RuntimeError):
@@ -61,6 +62,38 @@ def run_git(source_root: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def require_committed_sources(source_root: Path, paths: Iterable[str]) -> None:
+    """Fail closed when release inputs differ from the source commit in the manifest.
+
+    Release output is assembled from the working tree, while sourceCommit identifies
+    HEAD. Checking every copied asset and generator input prevents a release from
+    silently containing bytes that cannot be recovered from that commit.
+    """
+    checked = tuple(sorted({norm(path) for path in paths}))
+    if not checked:
+        return
+    result = subprocess.run(
+        ["git", "-C", str(source_root), "diff", "--quiet", "HEAD", "--", *checked],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.returncode == 0:
+        return
+    if result.returncode != 1:
+        raise ReleaseError(f"Unable to verify release source files against HEAD: {result.stderr.strip()}")
+    changed = run_git(source_root, "diff", "--name-only", "HEAD", "--", *checked).splitlines()
+    preview = ", ".join(changed[:20])
+    suffix = " ..." if len(changed) > 20 else ""
+    raise ReleaseError(
+        "Release source differs from sourceCommit (HEAD). Commit or discard the listed changes before publishing: "
+        + preview + suffix
+    )
+
+
 def load_json(path: Path) -> dict:
     try:
         with path.open("r", encoding="utf-8-sig") as stream:
@@ -91,6 +124,22 @@ def is_excluded(path: str, roots: Iterable[str]) -> bool:
 def tracked_files(source_root: Path) -> Tuple[str, ...]:
     raw = subprocess.run(
         ["git", "-C", str(source_root), "ls-files", "-z"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if raw.returncode != 0:
+        raise ReleaseError(raw.stderr.decode("utf-8", "replace"))
+    return tuple(
+        item.decode("utf-8", "surrogateescape")
+        for item in raw.stdout.split(b"\0")
+        if item
+    )
+
+
+def committed_files(source_root: Path) -> Tuple[str, ...]:
+    raw = subprocess.run(
+        ["git", "-C", str(source_root), "ls-tree", "-r", "--name-only", "-z", "HEAD"],
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -229,7 +278,10 @@ def collect_plan(source_root: Path, base: dict, release: dict, product: str) -> 
 
 
 def collect_files(source_root: Path, plan: ProductPlan) -> Tuple[str, ...]:
-    all_files = tracked_files(source_root)
+    return select_files(tracked_files(source_root), plan)
+
+
+def select_files(all_files: Sequence[str], plan: ProductPlan) -> Tuple[str, ...]:
     all_file_set = set(all_files)
     selected: Set[str] = set()
     for root in plan.include_roots:
@@ -380,6 +432,25 @@ def write_product_files(
     return tuple(sorted(set(final_files)))
 
 
+def release_inputs(source_root: Path, plan: ProductPlan, files: Sequence[str]) -> Set[str]:
+    inputs = set(files)
+    # Include the HEAD selection as well as the current index selection. This
+    # catches staged deletions, which disappear from `git ls-files` but would
+    # otherwise make the release differ from sourceCommit.
+    inputs.update(select_files(committed_files(source_root), plan))
+    inputs.update((str(BASE_CATALOG), str(REPOSITORY_CATALOG), str(PUBLISHER_SCRIPT)))
+    if plan.product == "StellarFramework":
+        inputs.update((
+            str(GENERAL_README_TEMPLATE),
+            str(GENERAL_README_EN_TEMPLATE),
+            str(GENERAL_GITIGNORE_TEMPLATE),
+            "Packages/manifest.json",
+        ))
+    else:
+        inputs.update((str(EXTENSIONS_README_TEMPLATE), str(EXTENSIONS_GITIGNORE_TEMPLATE)))
+    return inputs
+
+
 def verify_target_remote(target: Path, expected_repository: str) -> None:
     if not (target / ".git").exists():
         return
@@ -455,11 +526,18 @@ def main() -> int:
     if args.general_target:
         target = Path(args.general_target).resolve()
         verify_target_remote(target, general_plan.repository)
+        require_committed_sources(source_root, release_inputs(source_root, general_plan, collect_files(source_root, general_plan)))
+    if args.extensions_target:
+        target = Path(args.extensions_target).resolve()
+        verify_target_remote(target, extension_plan.repository)
+        require_committed_sources(source_root, release_inputs(source_root, extension_plan, collect_files(source_root, extension_plan)))
+
+    if args.general_target:
+        target = Path(args.general_target).resolve()
         write_product_files(source_root, target, base, release, general_plan, source_commit, args.validation)
         verify_no_extension_assemblies_in_general(target, extension_plan.profile_ids, base)
     if args.extensions_target:
         target = Path(args.extensions_target).resolve()
-        verify_target_remote(target, extension_plan.repository)
         write_product_files(source_root, target, base, release, extension_plan, source_commit, args.validation)
 
     print(json.dumps({"sourceCommit": source_commit, **summary}, ensure_ascii=False, indent=2))

@@ -145,7 +145,7 @@ Catalog 当前不提供 `sample` Profile，Export 也不再提供“样例包”
 
 原始框架工程只在顶层 `StellarFramework` 菜单保留两个入口：`Tools Hub` 与 `Export`。其中 `StellarFramework/Export` 是源码工程专用导出窗口，可多选 Kit、使用 Recommended Profile、预览并去重依赖闭包、导出为一个 `.unitypackage` 和同名依赖说明。Kit 专属维护、诊断、代码生成与验证能力优先进入 ToolsHub，不再各自创建 `StellarFramework/...` 子菜单。窗口与组合导出器位于 `Modules/Packaging`，该目录已被所有消费者分发路径排除，因此业务项目不会携带它。
 
-窗口面向用户按 `01 基础功能 / 02 完整功能 / 03 扩展功能` 组织交付；架构层的 Foundation / Extension / Adapter 继续作为卡片元数据和依赖约束显示。每张卡同时显示成熟度与“独立 / 自动带依赖”，依赖闭包算法不因 UI 分组发生变化。Addressables、YooAsset、HybridCLR 与代码热更均只在明确选择相关 Adapter/Profile 后进入导出包。
+窗口面向用户按 `01 基础功能 / 02 完整功能 / 03 扩展功能` 组织交付；架构层的 Foundation / Extension / Adapter 继续作为卡片元数据和依赖约束显示。每张卡同时显示成熟度与“独立 / 自动带依赖”，依赖闭包算法不因 UI 分组发生变化。只选一张 Kit 卡时，窗口显示“导出单一 Kit（自动包含依赖）”，产物只含该 Profile 的依赖闭包；选择多张卡时，会将所有闭包去重后合并为一个 `.unitypackage`。Addressables、YooAsset、HybridCLR 与代码热更均只在明确选择相关 Adapter/Profile 后进入导出包。
 
 新增或拆分 Kit 时，同步更新：
 

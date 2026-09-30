@@ -20,7 +20,15 @@ python Tools/RepositoryPublisher/publish_repositories.py ^
 
 The target `.git` directories are preserved. All other target content is replaced by deterministic release output, so the caller must validate the dry run and target remotes first.
 
+Before writing to either target, the publisher verifies that every selected source file and every generator input (catalogs, package manifest, publisher code, and templates) matches `HEAD`, including selected files deleted from the current index. It fails closed if one of those release inputs has staged or unstaged changes. Commit the intended change to `StellarFramework.Dev` first so `RELEASE-MANIFEST.json`'s `sourceCommit` identifies the exact bytes used to build the release. Unrelated working-tree changes do not block publication.
+
 After target-specific compile / consumer gates pass, rerun with `--validation PASS` before the release commit.
+
+The source provenance guard has standard-library unit tests:
+
+```text
+python -m unittest discover -s Tools/RepositoryPublisher/tests -v
+```
 
 ## Static release validation
 

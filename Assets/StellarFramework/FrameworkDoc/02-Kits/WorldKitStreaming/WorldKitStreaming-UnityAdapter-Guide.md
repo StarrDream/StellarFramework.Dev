@@ -14,3 +14,26 @@ Unity Adapter 只负责把高精度逻辑世界坐标映射到当前 floating or
 `WorldFloatingOriginSettings` 明确指定 threshold 和 snap size。超过 threshold 后，origin 按 snap size 对齐；同一逻辑对象“旧 Unity 坐标 + sceneDelta”必须等于“新 origin 重新映射后的 Unity 坐标”。
 
 验证覆盖到约 `1e12` 的逻辑坐标，并连续多次 recenter，Unity local 坐标仍保持在小范围内。
+
+## 使用案例：移动焦点超出阈值后平移表现根
+
+```csharp
+using StellarFramework.WorldKit;
+using StellarFramework.WorldKit.Streaming.UnityAdapter;
+using UnityEngine;
+
+WorldPoint2D logicalOrigin = new WorldPoint2D(0d, 0d);
+var settings = new WorldFloatingOriginSettings(recenterThreshold: 1000d, snapSize: 100d);
+// playerLogicalPosition remains double-precision; presentationRoot is Unity-only.
+WorldPoint2D focus = playerLogicalPosition;
+
+if (WorldFloatingOriginAdapter.TryComputeRecenter(
+        focus, logicalOrigin, in settings,
+        out WorldPoint2D nextOrigin, out Vector3 sceneDelta))
+{
+    presentationRoot.position += sceneDelta;
+    logicalOrigin = nextOrigin;
+}
+```
+
+`playerLogicalPosition` 始终使用 `WorldPoint2D` 保存；只有表现层使用 `Vector3`。不要把 recenter 后的 Unity Transform 坐标写回逻辑世界真值。

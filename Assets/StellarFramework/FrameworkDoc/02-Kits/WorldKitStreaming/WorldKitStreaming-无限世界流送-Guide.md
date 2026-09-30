@@ -29,3 +29,30 @@
 5. 降载顺序反向执行，未修改 Chunk 可直接丢弃数据，修改内容由 Delta 保存。
 
 这种“计划与提交分离”的方式避免异步加载失败时把 Registry 提前推进到错误状态。
+
+## 使用案例：按焦点计算分级 Chunk Demand
+
+```csharp
+using StellarFramework.WorldKit;
+using StellarFramework.WorldKit.Streaming;
+
+var focus = new WorldChunkCoord(-10, 7);
+var policy = new WorldStreamingPolicy(
+    metadataRadius: 6,
+    dataRadius: 3,
+    simulationRadius: 1,
+    presentationRadius: 0);
+int required = WorldStreamingPlanner.GetRequiredDemandCount(
+    focus, WorldExtent.Infinite, in policy);
+var demand = new WorldChunkDemand[required];
+int count = WorldStreamingPlanner.CollectDesired(
+    focus, WorldExtent.Infinite, in policy, demand);
+
+for (int i = 0; i < count; i++)
+{
+    WorldChunkDemand item = demand[i];
+    // Schedule metadata/data/simulation/presentation work in the game-specific adapter.
+}
+```
+
+当焦点移动后，用 `WorldStreamingReconciler.CollectTransitions` 生成一波相邻层级转换。先执行该转换对应的加载或释放；成功后再调用 `WorldChunkStreamingRegistry.TryTransition` 提交新 Tier。

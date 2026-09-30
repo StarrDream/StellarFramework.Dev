@@ -10,6 +10,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
     internal static class YooAssetPublisherFirstUseSetup
     {
         private const string PackageNamePrefsSuffix = ".packageName";
+        private const string AssetOutputRootPrefsSuffix = ".assetOutputRoot";
         private const string PackageGroupName = "HotUpdateRuntimePayload";
         private const string GeneratedRoot = "Assets/HotUpdatePublisherConsumerE2E/Generated";
         private const string ConsumerBehaviorPath = "Assets/HotUpdatePublisherConsumerE2E/Content/HotUpdateBehavior.txt";
@@ -26,6 +27,14 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             {
                 UnityEngine.Debug.LogError(
                     "[HotUpdatePublisher] Enter a valid business Package name first. Verification-only package names are rejected.");
+                return;
+            }
+
+            string generatedRoot = ReadHotUpdateAssetOutputRoot();
+            if (!IsSafeAssetRoot(generatedRoot))
+            {
+                UnityEngine.Debug.LogError(
+                    $"[HotUpdatePublisher] HotUpdate asset output root '{generatedRoot}' must be a safe folder inside Assets/. No Collector changes were made.");
                 return;
             }
 
@@ -78,12 +87,12 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             package.Groups.Add(group);
 
             AddCollector(group, ConsumerBehaviorPath);
-            AddCollector(group, GeneratedRoot + "/Manifest/HotUpdateManifest.json");
-            AddCollector(group, GeneratedRoot + "/Code/HotUpdate.dll.bytes");
-            AddCollector(group, GeneratedRoot + "/Metadata/mscorlib.dll.bytes");
-            AddCollector(group, GeneratedRoot + "/Metadata/System.dll.bytes");
-            AddCollector(group, GeneratedRoot + "/Metadata/System.Core.dll.bytes");
-            AddCollector(group, GeneratedRoot + "/Metadata/UnityEngine.CoreModule.dll.bytes");
+            AddCollector(group, generatedRoot + "/Manifest/HotUpdateManifest.json");
+            AddCollector(group, generatedRoot + "/Code/HotUpdate.dll.bytes");
+            AddCollector(group, generatedRoot + "/Metadata/mscorlib.dll.bytes");
+            AddCollector(group, generatedRoot + "/Metadata/System.dll.bytes");
+            AddCollector(group, generatedRoot + "/Metadata/System.Core.dll.bytes");
+            AddCollector(group, generatedRoot + "/Metadata/UnityEngine.CoreModule.dll.bytes");
 
             setting.Packages.Add(package);
             AssetBundleCollectorSettingData.SaveFile();
@@ -115,6 +124,37 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             return string.IsNullOrWhiteSpace(packageName)
                 ? "HotUpdatePublisherConsumerE2E"
                 : packageName;
+        }
+
+        private static string ReadHotUpdateAssetOutputRoot()
+        {
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
+            string suffix = projectRoot.Replace('\\', '/');
+            string root = UnityEditor.EditorPrefs.GetString(
+                "StellarFramework.HotUpdatePublisher." + suffix + AssetOutputRootPrefsSuffix,
+                GeneratedRoot);
+            return (root ?? string.Empty).Replace('\\', '/').TrimEnd('/');
+        }
+
+        private static bool IsSafeAssetRoot(string assetRoot)
+        {
+            if (string.IsNullOrWhiteSpace(assetRoot) ||
+                !assetRoot.StartsWith("Assets/", StringComparison.Ordinal) ||
+                assetRoot.Contains(":") || assetRoot.Contains("%"))
+                return false;
+
+            string[] segments = assetRoot.Split('/');
+            for (int index = 0; index < segments.Length; index++)
+                if (string.IsNullOrWhiteSpace(segments[index]) || segments[index] == "." || segments[index] == "..")
+                    return false;
+
+            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
+            string assetsRoot = Path.GetFullPath(UnityEngine.Application.dataPath)
+                .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            string candidate = Path.GetFullPath(Path.Combine(projectRoot,
+                assetRoot.Replace('/', Path.DirectorySeparatorChar)))
+                .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            return candidate.StartsWith(assetsRoot, StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsSafeBusinessPackageName(string packageName)

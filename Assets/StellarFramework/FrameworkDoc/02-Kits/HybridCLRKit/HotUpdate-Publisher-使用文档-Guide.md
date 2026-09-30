@@ -14,9 +14,11 @@ HybridCLRKit.RunAsync(...)
 
 ## 当前实现状态
 
-当前仓库已有变更分类、BaseRelease 仓库、HybridCLR/YooAsset Build Adapter、产物校验、Release Gate、LocalFolder/S3-Compatible 发布目标、远端 GET/Range 校验、Dry Run、Release History 与 Rollback 服务。ToolsHub 提供 Overview、Changes、Build、Server、History、Advanced 分区。
+当前仓库已有变更分类、BaseRelease 仓库、HybridCLR/YooAsset Build Adapter、产物校验、Release Gate、LocalFolder/S3-Compatible 发布目标、远端 GET/Range 校验、Dry Run、Release History 与 Rollback 服务。ToolsHub 提供 Overview、Changes、Build、Server、History、Advanced 分区；Build、Dry Run、Build & Publish、Rollback 都直接调用对应流水线，操作状态与异常会显示在面板中。
 
-ToolsHub 的构建和发布主按钮会在生产 YooAsset Collector、目标平台 BaseRelease、完整阶段配置和发布目标尚未连接时保持禁用。当前仓库的 YooAsset Collector 是验证用途；不能用它冒充业务生产包，也不能把未配置流程报告成发布成功。接入新业务项目时，需要先完成本指南中的项目配置和发布流水线装配。
+Build 会依次执行变更 Preflight / Classify、HybridCLR Compile、DLL/AOT/Manifest Export、YooAsset Build 和产物校验。Dry Run 会再运行所需 Release Gate 与远端只读校验。Build & Publish 只有在用户确认后，才上传不可变文件、核对远端并切换 PackageVersion。可选 HybridCLR 和 YooAsset Editor 程序集分别向 Publisher 注册 Adapter；未安装或未编译时，面板显示具体阻塞原因，不会让基础 ToolsHub 引用这些可选 SDK。
+
+主按钮会在目标平台 BaseRelease、匹配的 YooAsset 业务 Collector、SDK Adapter 或发布目标不完整时禁用，并说明缺失项。推荐 Collector 创建的是独立业务 Package，保留现有 Verification 配置；已有 Package 不会被自动改写，面板会逐项检查所需 Manifest、HotUpdate DLL 和 AOT metadata 收集路径。
 
 ## Base App 与 HotUpdate 边界
 
@@ -60,12 +62,12 @@ HotUpdate MonoBehaviour Prefab/Scene 必须由 YooAsset 远端包管理，并在
 
 ## 首次配置
 
-1. 创建并验证目标平台 BaseRelease，保存 Unity/HybridCLR/YooAsset 版本、Scripting Backend、AOT metadata 文件及 SHA256。
-2. 配置 YooAsset 业务 Collector 和 HotUpdate DLL/AOT metadata 收集规则。不要使用 `StellarHotUpdateVerification` 作为生产 Collector。
+1. 在目标平台和 IL2CPP 设置匹配时创建 BaseRelease；ToolsHub 会调用 HybridCLR Generate/All，并保存 Unity/HybridCLR/YooAsset 版本、Scripting Backend、AOT metadata 文件及 SHA256。切换平台或设置后需等 Unity 完成导入，再执行创建。
+2. 在 ToolsHub 首次配置中创建独立 YooAsset 业务 Package，或在现有业务 Collector 中加入面板列出的全部 Publisher 产物收集路径。不要使用 `StellarHotUpdateVerification` 作为生产 Collector。
 3. 在 ToolsHub 的 Server 区分别设置 Development、Staging、Production 的 MainHostServer、FallbackHostServer、RemoteRoot、PublishTarget 和 Credential Profile Name。使用 LocalFolder 时，为每个环境选择已挂载目录的 Local Folder Root；该路径与非秘密 profile 元数据一起存放在项目级 EditorPrefs。
 4. MainHostServer 必须直接指向 YooAsset Package 文件目录；不要重复追加 Package 名或 RemoteRoot。
 5. LocalFolder 的根目录通过 Server 区的文件夹选择器配置；Profile 的 RemoteRoot 会追加到该根目录下。S3-Compatible 凭证由环境变量 Provider 读取，不写入 Assets、EditorPrefs 或 Git。`CredentialProfileName=ProductionCdn` 对应变量 `STELLAR_HOTUPDATE_PRODUCTIONCDN`；变量内容是 JSON，必须含 `accessKeyId`、`secretAccessKey`，`sessionToken` 可选。
-6. 对每个环境执行只读的目标连通性和文件 GET/Range 验证。Production 主/回退 Host 必须使用 HTTPS。
+6. 使用 Dry Run 对目标环境执行发布前检查和远端文件完整性验证。Production 主/回退 Host 必须使用 HTTPS。
 
 推荐远端布局：
 

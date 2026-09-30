@@ -14,16 +14,15 @@
     "Unity.Addressables.Editor",
     "Unity.ResourceManager"
   ],
-  "includePlatforms": [
-    "Editor"
-  ],
+  "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,
   "precompiledReferences": [],
   "autoReferenced": false,
   "defineConstraints": [
-    "UNITY_ADDRESSABLES"
+    "UNITY_ADDRESSABLES",
+    "UNITY_EDITOR"
   ],
   "versionDefines": [
     {

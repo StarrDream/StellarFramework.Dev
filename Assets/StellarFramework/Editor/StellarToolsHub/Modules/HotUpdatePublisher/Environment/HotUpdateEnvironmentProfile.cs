@@ -25,6 +25,12 @@ namespace StellarFramework.Editor.HotUpdatePublisher
         /// <summary>Absolute mounted-folder root used only when PublishTarget is LocalFolder.</summary>
         public string LocalFolderRoot;
         public string CredentialProfileName;
+        /// <summary>Non-secret S3-compatible service endpoint used only when PublishTarget is S3Compatible.</summary>
+        public string S3ServiceEndpoint;
+        /// <summary>Non-secret bucket name used only when PublishTarget is S3Compatible.</summary>
+        public string S3Bucket;
+        /// <summary>Non-secret S3-compatible signing region.</summary>
+        public string S3Region;
 
         /// <summary>创建一个空配置的标准环境模板，不假定任何服务地址或凭证。</summary>
         public static HotUpdateEnvironmentProfile CreateDefault(HotUpdateEnvironmentKind environment)
@@ -40,7 +46,10 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                 RemoteRoot = "hotupdate/" + environment,
                 PublishTarget = "LocalFolder",
                 LocalFolderRoot = string.Empty,
-                CredentialProfileName = string.Empty
+                CredentialProfileName = string.Empty,
+                S3ServiceEndpoint = string.Empty,
+                S3Bucket = string.Empty,
+                S3Region = "us-east-1"
             };
         }
 

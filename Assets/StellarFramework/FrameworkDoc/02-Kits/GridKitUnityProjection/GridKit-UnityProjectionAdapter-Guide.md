@@ -19,6 +19,36 @@
 6. DenseGrid<GridTraversalOverrideCell> 独立保存手工 ForceWalkable / ForceBlocked / Cost Override。
 7. GridTraversalComposer 将 AutoBakeBase + ManualOverride 组合为最终通行语义。
 
+## 使用案例：Terrain 烘焙基础通行网格
+
+```csharp
+using System;
+using StellarFramework.GridKit.UnityProjection;
+using UnityEngine;
+
+// terrain is the project-owned Terrain selected for this grid region.
+GridRect bounds = new GridRect(new GridCoord(0, 0), new GridSize(16, 16));
+var settings = new GridProjectionBakeSettings(
+    bounds,
+    worldOrigin: new Vector3(terrain.transform.position.x, terrain.transform.position.y + 200f,
+        terrain.transform.position.z),
+    cellSize: Vector2.one,
+    maxWalkableSlope: 35f,
+    defaultMovementCost: 1000L,
+    steepMovementCost: 2500L,
+    steepSlopeThreshold: 20f,
+    maxDistance: 250f);
+
+var autoBake = new DenseGrid<GridBakeCell>(bounds);
+var scratch = new GridBakeCell[autoBake.Count];
+GridProjectionBakeResult result = GridProjectionBaker.Bake(
+    new TerrainGridProjectionSource(terrain), settings, autoBake, scratch);
+if (!result.Success)
+    throw new InvalidOperationException("Terrain projection failed: " + result.Error);
+```
+
+`worldOrigin` 是网格起点上方的采样位置；每个 Cell 从该点沿默认 `Vector3.down` 方向采样。将 `autoBake` 保存为新基础烘焙结果，手工通行覆盖另存在 `DenseGrid<GridTraversalOverrideCell>` 中；重新烘焙时不要清掉该覆盖网格。
+
 ## Rebake
 
 Rebake 只替换 AutoBakeBase。ManualOverride 是独立数据，重新采样 Terrain/Mesh 时不会被静默清除。

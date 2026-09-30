@@ -123,6 +123,39 @@ Shipwreck：
     WaterDepth >= minimum
     WaterDepth <= maximum
 
+## 10.1 使用案例：塔位验证并返回所有失败原因
+
+```csharp
+using System;
+using StellarFramework.PlacementKit;
+
+var request = new PlacementRequest(
+    PlacementTypeId.From("placement.tower"),
+    x: 12.5d,
+    y: 8d,
+    rotationDegrees: 90d,
+    footprint: PlacementFootprint.Rectangle(2d, 2d));
+var facts = new PlacementSiteFacts(
+    maxSlopeDegrees: 28d,
+    minWaterDepth: 0d,
+    maxWaterDepth: 0.2d,
+    zoneMask: 0b0010UL,
+    conflictMask: 0b0001UL,
+    connectionMask: 0b0100UL);
+IPlacementRule<PlacementSiteFacts>[] rules =
+{
+    new PlacementSlopeRule(15d),
+    new PlacementRequiredZoneRule(0b0010UL),
+    new PlacementConflictRule(0b0001UL),
+    new PlacementConnectionRule(0b0100UL)
+};
+var failures = new PlacementFailureRecord[rules.Length];
+PlacementEvaluationResult result = PlacementEvaluator.Evaluate(
+    in request, in facts, rules.AsSpan(), failures.AsSpan(), collectAllFailures: true);
+```
+
+`result.Allowed` 为 false 时，按 `result.FailureCount` 读取 `failures` 中的稳定 Failure ID 并显示 UI 提示。`facts` 由项目自己的 Terrain/Grid Adapter 采样；PlacementKit 不会自行读取场景或创建建筑。
+
 ## 11. Failure Semantics
 
 Placement validation 不偷偷修复输入：

@@ -486,6 +486,9 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(window, Does.Contain("[MenuItem(\"StellarFramework/Export\")]"));
             Assert.That(window, Does.Contain("ExportKitPackageGroupInternal"));
             Assert.That(window, Does.Contain("自动合并依赖"));
+            Assert.That(window, Does.Contain("导出单一 Kit（自动包含依赖）"));
+            Assert.That(window, Does.Contain("selectedIds.Length == 1"));
+            Assert.That(window, Does.Contain("ExportSelectedProfiles(selectedIds)"));
             Assert.That(window, Does.Contain("01  基础功能"));
             Assert.That(window, Does.Contain("02  完整功能"));
             Assert.That(window, Does.Contain("03  扩展功能"));
