@@ -25,3 +25,10 @@
 - RepositoryPublisher 从 Dev 生成 General（52 个 Profile）与 Extensions（32 个 Profile）。两仓和合并后的 Extensions Consumer 均通过 Release Tree 校验。
 - 合并后的 Consumer 在 Unity 2022.3.62f3c1 完成首次导入及脚本编译，C# 编译错误为 0。
 - Dev、General、Extensions 的本地提交组成待推送变更；远端推送尚未执行。
+
+### 2026-09-30 鈥?Android 热更 Gate 最终复验
+
+- 修复 `HotUpdateRuntimeVerificationBootstrap.TryRun` 的平台条件编译：Android Player 只编译 Intent 热更启动分支，非 Android Player 编译本地配置文件启动分支，消除 Android 的 CS0162 不可达代码警告。
+- MuMu `127.0.0.1:16416`（Android 12 / API 32）上的最终 Gate：`Tools/AndroidVerification/Results/20260930-191703/pipeline-result.json` = PASS，HybridCLR Android IL2CPP 预处理、Release APK 构建、产品验证与清理均通过。四项 AOT metadata 加载成功，程序集 SHA256 与 Manifest 相符，热更入口已调用。
+- 冷启动下载 6 个文件 / 1,845,419 字节；强制停止后重启下载 0 字节。APK 构建 0 errors / 1 warning；唯一警告对应 `insecureHttpOption=Unavailable` 的设置反射能力。Unity Editor 最终诊断 0 errors / 0 warnings。
+- 首次复验因 Unity Bee 缓存仍引用已清理的临时 E2E 脚本而在 APK 前失败；刷新 AssetDatabase 后重跑完整 Gate 成功。失败尝试没有产生设备验证结果。

@@ -857,7 +857,7 @@ namespace StellarFrameworkVerification.Runtime
                 });
             }
             return;
-#endif
+#else
 
             string configPath = HotUpdateVerificationPaths.RuntimeConfigFilePath;
             if (!File.Exists(configPath)) return;
@@ -867,6 +867,7 @@ namespace StellarFrameworkVerification.Runtime
             File.Delete(configPath);
             HotUpdateVerificationConfig config = JsonUtility.FromJson<HotUpdateVerificationConfig>(json);
             RunAndWriteAsync(config, resultPath).Forget();
+#endif
         }
 
 #if UNITY_ANDROID
