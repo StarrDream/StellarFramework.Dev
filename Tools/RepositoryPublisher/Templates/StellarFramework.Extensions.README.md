@@ -32,8 +32,11 @@ Extensions 保留 Dev 中原始 `Assets/StellarFramework/...` 路径和 `.meta` 
 推荐流程：
 
 1. 先使用 `StarrDream/StellarFramework`。
-2. 从本仓选取需要的扩展域并覆盖/合并到项目的 `Assets` 目录，必须保留 `.meta`。
-3. 组合后可继续使用 General 仓中的 `StellarFramework -> Export` 生成单 Kit 或组合 unitypackage。
+2. 读取本仓 `RELEASE-MANIFEST.json` 的 `requiredUpm`，将列出的包规格加入项目 `Packages/manifest.json` 并等待 Unity 完成解析。
+3. 从本仓选取需要的扩展域并覆盖/合并到项目的 `Assets` 目录，必须保留 `.meta`。
+4. 组合后可继续使用 General 仓中的 `StellarFramework -> Export` 生成单 Kit 或组合 unitypackage。
+
+`requiredUpm` 是本次 Extensions 输出所含 Kit 及其 General 依赖所需的精确 UPM 包规格；例如 HotUpdate 域需要 HybridCLR 和 UniTask，YooAsset / Addressables Adapter 还需要各自的运行包。
 
 不要单独把本仓作为 Unity 工程打开；它有意不携带 `ProjectSettings` / `Packages`，从而避免在缺少 General Contract 时产生误导性的编译红错。
 

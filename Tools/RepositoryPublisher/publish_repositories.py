@@ -348,20 +348,32 @@ def copy_files(source_root: Path, target: Path, files: Sequence[str]) -> None:
         shutil.copy2(source, destination)
 
 
-def build_general_manifest(source_root: Path, base: dict, plan: ProductPlan) -> dict:
+def required_upm_manifest(source_root: Path, base: dict, plan: ProductPlan) -> Dict[str, str]:
     profiles = {str(item["id"]): item for item in base["profiles"]}
-    required_upm: Set[str] = set()
-    for profile_id in plan.profile_ids:
-        required_upm.update(str(item) for item in profiles[profile_id].get("requiredUpm", []) or [])
-
+    closure = resolve_dependency_closure(plan.profile_ids, profiles)
+    required_upm_ids = {
+        str(package_id)
+        for profile_id in closure
+        for package_id in profiles[profile_id].get("requiredUpm", []) or []
+    }
     source_manifest = load_json(source_root / "Packages/manifest.json")
-    source_dependencies = source_manifest.get("dependencies", {})
+    source_dependencies = source_manifest.get("dependencies", {}) or {}
+    missing = sorted(required_upm_ids - set(source_dependencies))
+    if missing:
+        raise ReleaseError(f"Release profiles require UPM dependencies missing from Dev package manifest: {missing}")
+    return {package_id: str(source_dependencies[package_id]) for package_id in sorted(required_upm_ids)}
+
+
+def build_general_manifest(source_root: Path, base: dict, plan: ProductPlan) -> dict:
+    required_upm = required_upm_manifest(source_root, base, plan)
+    source_manifest = load_json(source_root / "Packages/manifest.json")
+    source_dependencies = source_manifest.get("dependencies", {}) or {}
     dependencies = {
         package_id: version
         for package_id, version in source_dependencies.items()
         if package_id.startswith("com.unity.modules.") or package_id in required_upm
     }
-    missing = sorted(required_upm - set(dependencies))
+    missing = sorted(set(required_upm) - set(dependencies))
     if missing:
         raise ReleaseError(f"General package manifest is missing UPM dependencies: {missing}")
     return {"dependencies": dict(sorted(dependencies.items()))}
@@ -374,6 +386,7 @@ def write_release_manifest(
     source_commit: str,
     release_version: str,
     validation: str,
+    required_upm: Mapping[str, str],
     files: Sequence[str],
 ) -> None:
     manifest = {
@@ -387,6 +400,7 @@ def write_release_manifest(
         "domains": list(plan.domains),
         "profileIds": list(plan.profile_ids),
         "requiredGeneralProfileIds": list(plan.required_general_profiles),
+        "requiredUpm": dict(sorted(required_upm.items())),
         "validation": validation,
         "fileCount": len(files),
     }
@@ -430,6 +444,7 @@ def write_product_files(
         source_commit,
         str(release["releaseVersion"]),
         validation,
+        required_upm_manifest(source_root, base, plan),
         tuple(sorted(set(final_files))),
     )
     return tuple(sorted(set(final_files)))

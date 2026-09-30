@@ -126,6 +126,17 @@ def validate_release_manifest(root: Path, product: str, source_commit: str | Non
     return manifest
 
 
+def validate_required_upm(manifest: dict) -> Dict[str, str]:
+    dependencies = manifest.get("requiredUpm")
+    require(isinstance(dependencies, dict), "Release manifest must declare exact requiredUpm package specs.")
+    require(
+        all(isinstance(name, str) and name.strip() and isinstance(spec, str) and spec.strip()
+            for name, spec in dependencies.items()),
+        "Release manifest requiredUpm must map package ids to non-empty package specs.",
+    )
+    return dependencies
+
+
 def validate_general(root: Path, source_commit: str | None) -> dict:
     require(root.exists(), f"General root not found: {root}")
     manifest = validate_release_manifest(root, "StellarFramework", source_commit)
@@ -133,7 +144,13 @@ def validate_general(root: Path, source_commit: str | None) -> dict:
         require(not (root / relative).exists(), f"Maintainer-only path leaked into General: {relative}")
 
     packages = load_json(root / "Packages/manifest.json")
-    dependencies = set((packages.get("dependencies") or {}).keys())
+    dependency_specs = packages.get("dependencies") or {}
+    dependencies = set(dependency_specs)
+    required_upm = validate_required_upm(manifest)
+    require(set(required_upm).issubset(dependencies),
+            "General RELEASE-MANIFEST requiredUpm packages are missing from Packages/manifest.json.")
+    require(all(dependency_specs.get(package_id) == spec for package_id, spec in required_upm.items()),
+            "General RELEASE-MANIFEST requiredUpm specs differ from Packages/manifest.json.")
     require("com.besty.unity-skills" not in dependencies, "UnitySkills leaked into General Packages manifest.")
     require("com.code-philosophy.hybridclr" not in dependencies,
             "HybridCLR package leaked into General Packages manifest.")
@@ -171,6 +188,8 @@ def validate_extensions(root: Path, source_commit: str | None) -> dict:
     assemblies = read_asmdefs(root)
     require(bool(assemblies), "Extensions contains no asmdefs.")
     asset_files, asset_dirs = validate_meta_completeness(root)
+    required_upm = validate_required_upm(manifest)
+    require(bool(required_upm), "Extensions release manifest must declare UPM dependencies.")
     required_general = manifest.get("requiredGeneralProfileIds") or []
     require(bool(required_general), "Extensions manifest must declare General dependencies.")
     return {
@@ -179,6 +198,7 @@ def validate_extensions(root: Path, source_commit: str | None) -> dict:
         "assetDirectories": asset_dirs,
         "domains": manifest.get("domains") or [],
         "requiredGeneralProfiles": required_general,
+        "requiredUpm": required_upm,
     }
 
 

@@ -36,6 +36,16 @@ class GeneralManifestDependencyTests(unittest.TestCase):
         self.assertEqual(dependencies.get("com.unity.test-framework"), "1.1.33")
         self.assertNotIn("com.code-philosophy.hybridclr", dependencies)
 
+    def test_extensions_release_declares_exact_hybridclr_upm_spec(self) -> None:
+        release = PUBLISHER.load_json(PROJECT_ROOT / PUBLISHER.REPOSITORY_CATALOG)
+        plan = PUBLISHER.collect_plan(PROJECT_ROOT, self.base, release, "extensions")
+
+        dependencies = PUBLISHER.required_upm_manifest(PROJECT_ROOT, self.base, plan)
+
+        self.assertIn("com.code-philosophy.hybridclr", dependencies)
+        self.assertIn("hybridclr_unity.git", dependencies["com.code-philosophy.hybridclr"])
+        self.assertIn("com.cysharp.unitask", dependencies)
+
 
 if __name__ == "__main__":
     unittest.main()
