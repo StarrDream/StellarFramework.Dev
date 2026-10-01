@@ -149,7 +149,7 @@ powershell -ExecutionPolicy Bypass -File .\Tools\AndroidVerification\Invoke-Stel
   -PrepareOnly
 ```
 
-The command prints the APK path, package directory and a ZIP archive and records them in `Tools/AndroidVerification/Results/<run-id>/pipeline-result.json`. For a simple upload, copy `StellarHotUpdateVerification-android.zip` to the server and extract its contents directly into the CDN document root, preserving all relative paths. For the Caddy setup in the external-CDN test, the extracted files go directly under `D:\StellarHotUpdate`, which Caddy serves at the site root. Do not create an extra subdirectory for the ZIP contents. Before testing the APK, open `http://dreamstarry.cn:18743/StellarHotUpdateVerification.version`; it should return the version recorded in the APK's verification manifest (currently `tank-arena-v7`).
+The command prints the APK path, package directory and a ZIP archive and records them in `Tools/AndroidVerification/Results/<run-id>/pipeline-result.json`. For a simple upload, copy `StellarHotUpdateVerification-android.zip` to the server and extract its contents directly into the CDN document root, preserving all relative paths. For the Caddy setup in the external-CDN test, the extracted files go directly under `D:\StellarHotUpdate`, which Caddy serves at the site root. Do not create an extra subdirectory for the ZIP contents. Before testing the APK, open `http://dreamstarry.cn:18743/StellarHotUpdateVerification.version`; it should return the version recorded in the APK's verification manifest (currently `tank-arena-v9`).
 
 After the upload is complete, use the already running MuMu device and run the APK smoke gate against the public hostname. Set the ADB serial to the MuMu serial reported by `adb devices` (the example below uses `127.0.0.1:16416`):
 
@@ -161,7 +161,7 @@ powershell -ExecutionPolicy Bypass -File .\Tools\AndroidVerification\Invoke-Stel
   -HotUpdateHost dreamstarry.cn `
   -HotUpdatePort 18743 `
   -HotUpdatePackageName StellarHotUpdateVerification `
-  -HotUpdatePackageVersion tank-arena-v7 `
+  -HotUpdatePackageVersion tank-arena-v9 `
   -RuntimeSeconds 90 `
   -RestartRuntimeSeconds 30
 ```

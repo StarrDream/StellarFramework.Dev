@@ -2,6 +2,8 @@ namespace HotUpdate
 {
     public static class HotUpdateMain
     {
+        public const string PackageVersion = "tank-arena-v9";
+
         public static void Main()
         {
             TankArenaGame.Launch();

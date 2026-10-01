@@ -9,6 +9,7 @@
 - **AUTO** mode aims at the nearest hostile and fires for you. Tap the mode control beside the language button to switch between **AUTO** and **MANUAL**.
 - Collect a repair core to restore hull integrity.
 - Pause, resume, restart, or switch between English and Chinese from the HUD.
+- The badge at the upper right shows the hot-update package version currently built into this demo.
 - On desktop, use **WASD** to move the hull and drag the right aim pad with the mouse. In **MANUAL** mode, hold the right pad or press **Space** to fire along the turret's current heading.
 
 Hostile armor and movement speed increase as eliminations advance the wave. The match ends when hull integrity reaches zero.
@@ -25,4 +26,4 @@ Hostile armor and movement speed increase as eliminations advance the wave. The 
 
 ## Android verification
 
-Use **Tools → StellarFramework → Verification → Prepare Android HotUpdate Release Gate** to build the Android package. The prepared package version is `tank-arena-v7`. The Android smoke script verifies a cold download, the loaded assembly hash, metadata loading, entry-point execution, and a restart from the YooAsset cache. When testing against an external HTTP CDN, Android's insecure-download setting is enabled only for the verification APK; production builds should use HTTPS or set the appropriate Player setting explicitly.
+Use **Tools → StellarFramework → Verification → Prepare Android HotUpdate Release Gate** to build the Android package. The prepared package version is `tank-arena-v9`. The Android smoke script verifies a cold download, the loaded assembly hash, metadata loading, entry-point execution, and a restart from the YooAsset cache. When testing against an external HTTP CDN, Android's insecure-download setting is enabled only for the verification APK; production builds should use HTTPS or set the appropriate Player setting explicitly.

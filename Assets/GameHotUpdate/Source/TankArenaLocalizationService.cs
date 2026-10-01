@@ -25,7 +25,8 @@ namespace HotUpdate
             "tank.resume",
             "tank.paused",
             "tank.pickup",
-            "tank.phase_ready"
+            "tank.phase_ready",
+            "tank.package"
         };
 
         private static readonly string[] English =
@@ -47,7 +48,8 @@ namespace HotUpdate
             "RESUME",
             "PAUSED",
             "HULL RESTORED  +25",
-            "SECTOR STABLE"
+            "SECTOR STABLE",
+            "PACKAGE"
         };
 
         private static readonly string[] Chinese =
@@ -69,7 +71,8 @@ namespace HotUpdate
             "继续作战",
             "暂停",
             "装甲恢复  +25",
-            "区域稳定"
+            "区域稳定",
+            "热更包"
         };
 
         private static readonly LocaleId EnglishLocale = LocaleId.From("en-US");

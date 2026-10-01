@@ -206,7 +206,33 @@ namespace StellarFrameworkVerification.Editor
 
                 // GenerateAll compiles HotUpdate.dll and builds a scripts-only Android IL2CPP
                 // player to regenerate AssembliesPostIl2CppStrip/Android from this target.
-                PrebuildCommand.GenerateAll();
+                // Unity's Android post-processor runs sdkmanager --list while building. The
+                // bundled sdkmanager.bat accepts JAVA_OPTS; give its Java process the configured
+                // Windows system proxy and bounded repository timeouts so a slow SDK mirror
+                // cannot block the Editor indefinitely.
+                string previousJavaOptions = Environment.GetEnvironmentVariable("JAVA_OPTS");
+                try
+                {
+                    string javaOptions = previousJavaOptions ?? string.Empty;
+                    javaOptions = AddDefaultJavaToolOption(
+                        javaOptions,
+                        "java.net.useSystemProxies",
+                        "true");
+                    javaOptions = AddDefaultJavaToolOption(
+                        javaOptions,
+                        "sun.net.client.defaultReadTimeout",
+                        "15000");
+                    javaOptions = AddDefaultJavaToolOption(
+                        javaOptions,
+                        "sun.net.client.defaultConnectTimeout",
+                        "15000");
+                    Environment.SetEnvironmentVariable("JAVA_OPTS", javaOptions);
+                    PrebuildCommand.GenerateAll();
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable("JAVA_OPTS", previousJavaOptions);
+                }
                 state.hotUpdateDllSource = HybridCLRHotUpdateAssetExporter
                     .GetGeneratedHotUpdateSourceDirectory(BuildTarget.Android) + "/HotUpdate.dll";
                 state.regeneratedAotMetadataSources = ValidateAndroidHybridClrOutputs(
@@ -357,6 +383,25 @@ namespace StellarFrameworkVerification.Editor
             hotUpdateSha256 = HybridCLRHotUpdateAssetExporter.ComputeSha256Hex(
                 File.ReadAllBytes(hotUpdateDllPath));
             return generatedFiles.ToArray();
+        }
+
+        private static string AddDefaultJavaToolOption(
+            string options,
+            string propertyName,
+            string value)
+        {
+            string propertyPrefix = "-D" + propertyName + "=";
+            string[] existingOptions = options.Split(
+                (char[])null,
+                StringSplitOptions.RemoveEmptyEntries);
+            if (existingOptions.Any(option => option.StartsWith(propertyPrefix, StringComparison.Ordinal)))
+            {
+                return options;
+            }
+
+            return string.IsNullOrWhiteSpace(options)
+                ? propertyPrefix + value
+                : options.TrimEnd() + " " + propertyPrefix + value;
         }
 
         private static void WritePreparationState(string path, AndroidPreparationState state)

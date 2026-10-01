@@ -369,6 +369,14 @@ namespace HotUpdate
                 new Vector2(0.80f, 0.925f), new Vector2(0.92f, 0.977f),
                 _roundedSprite, new Color32(142, 86, 42, 245), "AUTO", 17,
                 new Color32(255, 230, 190, 255), OnToggleFireMode);
+            Image packageVersionBadge = CreateImage("PackageVersionBadge", _safeAreaRoot,
+                new Vector2(0.53f, 0.89f), new Vector2(0.76f, 0.922f),
+                _roundedSprite, new Color32(18, 43, 58, 250));
+            packageVersionBadge.raycastTarget = false;
+            Text packageVersionLabel = CreateText("PackageVersionLabel", packageVersionBadge.rectTransform,
+                Vector2.zero, Vector2.one, string.Empty, 16,
+                new Color32(155, 231, 234, 255), TextAnchor.MiddleCenter, FontStyle.Bold);
+            packageVersionLabel.raycastTarget = false;
             _pauseButton = CreateButton("Pause", _safeAreaRoot,
                 new Vector2(0.925f, 0.925f), new Vector2(0.985f, 0.977f),
                 _circleSprite, new Color32(21, 42, 57, 240), "Ⅱ", 30,
@@ -378,7 +386,7 @@ namespace HotUpdate
                 new Vector2(0.045f, 0.922f), new Vector2(0.685f, 0.972f),
                 string.Empty, 39, Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
             CreateText("GameSubtitle", _safeAreaRoot,
-                new Vector2(0.05f, 0.894f), new Vector2(0.685f, 0.925f),
+                new Vector2(0.05f, 0.894f), new Vector2(0.50f, 0.925f),
                 string.Empty, 18, new Color32(127, 165, 185, 255), TextAnchor.MiddleLeft, FontStyle.Normal);
 
             CreateMetricCard("ScoreCard", _safeAreaRoot, new Vector2(0.045f, 0.812f),
@@ -1212,6 +1220,9 @@ namespace HotUpdate
                 {
                     case "GameTitle": texts[i].text = _localization.Get("tank.title"); break;
                     case "GameSubtitle": texts[i].text = _localization.Get("tank.subtitle"); break;
+                    case "PackageVersionLabel":
+                        texts[i].text = _localization.Get("tank.package") + "  " + HotUpdateMain.PackageVersion;
+                        break;
                     case "Objective": texts[i].text = _localization.Get("tank.objective"); break;
                     case "MoveHint": texts[i].text = _localization.Get("tank.move"); break;
                     case "FireHint":
