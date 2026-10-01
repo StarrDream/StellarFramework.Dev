@@ -11,7 +11,7 @@ namespace StellarFrameworkVerification.Runtime
     public static class HotUpdateVerificationPaths
     {
         public const string PackageName = "StellarHotUpdateVerification";
-        public const string PackageVersion = "verification-v1";
+        public const string PackageVersion = "tank-arena-v7";
         public const int AndroidDefaultCdnPort = 18743;
 
         // Intent keys are duplicated by Tools/AndroidVerification and covered by policy tests.
@@ -30,8 +30,10 @@ namespace StellarFrameworkVerification.Runtime
             VerificationDirectoryName).Replace('\\', '/');
 
         public static string PackageOutputRoot => Path.Combine(
-            RootDirectoryPath,
-            "Bundles").Replace('\\', '/');
+            GetProjectRoot(),
+            "Builds",
+            "AndroidVerification",
+            "HotUpdatePackages").Replace('\\', '/');
 
         public static string RemoteCdnDirectoryPath => Path.Combine(
             RootDirectoryPath,
@@ -50,7 +52,9 @@ namespace StellarFrameworkVerification.Runtime
             "runtime-result.json").Replace('\\', '/');
 
         public static string AndroidPreparationResultFilePath => Path.Combine(
-            RootDirectoryPath,
+            GetProjectRoot(),
+            "Library",
+            "StellarHotUpdateVerification",
             "android-release-preparation.json").Replace('\\', '/');
 
         private static string GetProjectRoot()

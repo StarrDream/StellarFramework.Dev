@@ -133,9 +133,40 @@ powershell -ExecutionPolicy Bypass -File .\Tools\AndroidVerification\Invoke-Stel
   -HotUpdate
 ```
 
-This reuses the Android Release pipeline and smoke runner. It requires the Unity Active Build Target to be Android, runs HybridCLR `Generate/All` under temporary IL2CPP + x86_64 settings, exports freshly generated Android AOT metadata / `HotUpdate.dll` / Manifest SHA, and rebuilds the verification YooAsset package. The settings are restored by the Editor methods in `finally`.
+This reuses the Android Release pipeline and smoke runner. It requires the Unity Active Build Target to be Android, runs HybridCLR `Generate/All` under temporary IL2CPP + x86_64 settings, exports freshly generated Android AOT metadata / `HotUpdate.dll` / Manifest SHA, and rebuilds the verification YooAsset package. The HotUpdate verification APK temporarily sets Unity's `insecureHttpOption` to `AlwaysAllowed` so it can exercise the HTTP CDN; the build method restores the previous Player setting in `finally`.
 
-The pipeline serves the package from a local Python standard-library HTTP server bound only to `127.0.0.1`, then uses `adb reverse` to connect the emulator to it. It builds a non-Development IL2CPP APK and passes CDN/package/version values through Android launch Intent extras. The app must prove a cold download and a force-stop/restart cache hit. During each HotUpdate launch, the smoke runner waits for the Player's `BootstrapEntered` marker; it uses UIAutomator to find Android's accessible startup prompt buttons and selects **Wait** for `android:id/aerr_wait` when a system app is unresponsive. It records the number of handled system prompts and fails if the Player bootstrap does not appear within the bounded startup window. Each run emits the complete structured result as ordered, 512-character Base64 log chunks because Unity's Android logger truncates long messages; the smoke runner requires every chunk exactly once, reconstructs and parses the JSON, then asserts Manifest target Android, ResKit loads, SHA match, successful AOT metadata load, loaded `HotUpdate` Assembly, entry execution marker, and 0 redownloads after restart.
+That setting change applies only to the verification APK. If a shipping Android app downloads from a plain HTTP host, set **Allow downloads over HTTP** to **Always allowed** in the app's Android Player Settings, or serve the package over HTTPS. Unity blocks plain HTTP by default, and notes that unencrypted connections are not secure ([`PlayerSettings.insecureHttpOption`](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/PlayerSettings-insecureHttpOption.html), [`InsecureHttpOption.AlwaysAllowed`](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/InsecureHttpOption.AlwaysAllowed.html)).
+
+The default pipeline serves the package from a local Python standard-library HTTP server bound only to `127.0.0.1`, then uses `adb reverse` to connect the emulator to it. It builds a non-Development IL2CPP APK and passes CDN/package/version values through Android launch Intent extras. The app must prove a cold download and a force-stop/restart cache hit. During each HotUpdate launch, the smoke runner waits for the Player's `BootstrapEntered` marker; it uses UIAutomator to find Android's accessible startup prompt buttons and selects **Wait** for `android:id/aerr_wait` when a system app is unresponsive. It records the number of handled system prompts and fails if the Player bootstrap does not appear within the bounded startup window. Each run emits the complete structured result as ordered, 512-character Base64 log chunks because Unity's Android logger truncates long messages; the smoke runner requires every chunk exactly once, reconstructs and parses the JSON, then asserts Manifest target Android, ResKit loads, SHA match, successful AOT metadata load, loaded `HotUpdate` Assembly, entry execution marker, and 0 redownloads after restart.
+
+### Testing against an external CDN
+
+Use this two-step flow when the CDN is on another machine and the package must be copied to that machine. From the repository root, prepare a fresh Android HotUpdate APK and YooAsset package without starting the local test CDN or installing the APK:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Tools\AndroidVerification\Invoke-StellarAndroidReleaseVerification.ps1 `
+  -HotUpdate `
+  -PrepareOnly
+```
+
+The command prints the APK path, package directory and a ZIP archive and records them in `Tools/AndroidVerification/Results/<run-id>/pipeline-result.json`. For a simple upload, copy `StellarHotUpdateVerification-android.zip` to the server and extract its contents directly into the CDN document root, preserving all relative paths. For the Caddy setup in the external-CDN test, the extracted files go directly under `D:\StellarHotUpdate`, which Caddy serves at the site root. Do not create an extra subdirectory for the ZIP contents. Before testing the APK, open `http://dreamstarry.cn:18743/StellarHotUpdateVerification.version`; it should return the version recorded in the APK's verification manifest (currently `tank-arena-v7`).
+
+After the upload is complete, use the already running MuMu device and run the APK smoke gate against the public hostname. Set the ADB serial to the MuMu serial reported by `adb devices` (the example below uses `127.0.0.1:16416`):
+
+```powershell
+$env:STELLAR_ANDROID_DEVICE_SERIAL = '127.0.0.1:16416'
+powershell -ExecutionPolicy Bypass -File .\Tools\AndroidVerification\Invoke-StellarApkSmoke.ps1 `
+  -ApkPath .\Builds\AndroidVerification\StellarFramework-HotUpdate-x86_64-release.apk `
+  -RequireHotUpdatePass `
+  -HotUpdateHost dreamstarry.cn `
+  -HotUpdatePort 18743 `
+  -HotUpdatePackageName StellarHotUpdateVerification `
+  -HotUpdatePackageVersion tank-arena-v7 `
+  -RuntimeSeconds 90 `
+  -RestartRuntimeSeconds 30
+```
+
+The smoke runner accepts a DNS hostname or IPv4 address and constructs an HTTP origin using the supplied port. It clears the app data for a cold download, then force-stops and restarts the app to verify that YooAsset uses the cached package without downloading the files again. The result is written to `Tools/AndroidVerification/Results/<run-id>/result.json`; a successful external-CDN run must report both cold-start and restart HotUpdate evidence as `PASS`.
 
 Without an explicit device serial, the HotUpdate profile starts the existing `StellarFramework_API35` AVD with 4096 MB RAM. A manually running AVD is reused only when Android reports at least 3584 MB in `/proc/meminfo`; otherwise the pipeline stops before install and asks for that same AVD to be restarted through the existing helper. With an explicit device serial, it uses only that device and applies the same 3584 MB check. The ordinary smoke profile keeps its 2048 MB default.
 

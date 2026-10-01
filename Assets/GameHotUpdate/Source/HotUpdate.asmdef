@@ -2,7 +2,14 @@
     "name": "HotUpdate",
     "rootNamespace": "",
     "references": [
-        "StellarFramework.ResKit"
+        "StellarFramework.Runtime",
+        "StellarFramework.ActionKit",
+        "StellarFramework.BindableKit",
+        "StellarFramework.EventKit",
+        "StellarFramework.LocalizationKit.Core",
+        "StellarFramework.LogKit",
+        "StellarFramework.ResKit",
+        "StellarFramework.UIAdaptationKit"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -6,6 +6,7 @@ param(
     [int] $RuntimeSeconds = 15,
     [int] $RestartRuntimeSeconds = 5,
     [switch] $HotUpdate,
+    [switch] $PrepareOnly,
     [switch] $RequireUIAdaptationPass,
     [switch] $RequireSafeAreaInsets,
     [int] $CdnPort = 18743,
@@ -54,7 +55,7 @@ $buildStatePath = if ($HotUpdate) {
 } else {
     Join-Path $projectRoot 'Library\StellarFramework\AndroidVerification\android-build-state.json'
 }
-$prepareStatePath = Join-Path $projectRoot 'Temp\StellarHotUpdateVerification\android-release-preparation.json'
+$prepareStatePath = Join-Path $projectRoot 'Library\StellarHotUpdateVerification\android-release-preparation.json'
 $runDirectory = Join-Path $PSScriptRoot ("Results\" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 $buildLog = Join-Path $runDirectory 'unity-build.log'
 $pipelineResultPath = Join-Path $runDirectory 'pipeline-result.json'
@@ -246,6 +247,38 @@ function Invoke-StellarUnitySkillsBuild
     return $state
 }
 
+function Invoke-StellarUnityBatchProcess
+{
+    param(
+        [Parameter(Mandatory = $true)] [string] $Executable,
+        [Parameter(Mandatory = $true)] [string[]] $Arguments,
+        [Parameter(Mandatory = $true)] [int] $TimeoutMinutes,
+        [Parameter(Mandatory = $true)] [string] $LogPath
+    )
+
+    $quotedArguments = @($Arguments | ForEach-Object {
+        '"' + ([string]$_).Replace('"', '\"') + '"'
+    })
+    $process = Start-Process -FilePath $Executable `
+        -ArgumentList ($quotedArguments -join ' ') `
+        -PassThru `
+        -WindowStyle Hidden
+
+    try {
+        Write-Host "Started Unity batchmode process $($process.Id)."
+        Wait-Process -Id $process.Id -Timeout ($TimeoutMinutes * 60) -ErrorAction SilentlyContinue
+        $process.Refresh()
+        if (-not $process.HasExited) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "Unity batchmode exceeded the $TimeoutMinutes minute timeout. See: $LogPath"
+        }
+        return [int]$process.ExitCode
+    }
+    finally {
+        $process.Dispose()
+    }
+}
+
 function Invoke-StellarBatchModeBuild
 {
     param(
@@ -254,6 +287,7 @@ function Invoke-StellarBatchModeBuild
         [Parameter(Mandatory = $true)] [string] $OutputApk,
         [Parameter(Mandatory = $true)] [string] $StatePath,
         [Parameter(Mandatory = $true)] [string] $LogPath,
+        [int] $TimeoutMinutes = 30,
         [switch] $HotUpdate
     )
 
@@ -286,7 +320,11 @@ function Invoke-StellarBatchModeBuild
         )
 
         Write-Host "Building Android Release APK with Unity batchmode: $Executable"
-        & $Executable @unityArgs
+        $unityExitCode = Invoke-StellarUnityBatchProcess `
+            -Executable $Executable `
+            -Arguments $unityArgs `
+            -TimeoutMinutes $TimeoutMinutes `
+            -LogPath $LogPath
     }
     finally {
         if ($null -eq $previousVerificationApk) {
@@ -300,9 +338,9 @@ function Invoke-StellarBatchModeBuild
             $env:STELLAR_ANDROID_HOTUPDATE_APK = $previousHotUpdateApk
         }
     }
-    if ($LASTEXITCODE -ne 0)
+    if ($unityExitCode -ne 0)
     {
-        throw "Unity Android Release build failed with exit code $LASTEXITCODE. See: $LogPath"
+        throw "Unity Android Release build failed with exit code $unityExitCode. See: $LogPath"
     }
 
     $state = Read-StellarBuildState -Path $StatePath
@@ -341,9 +379,13 @@ function Invoke-StellarBatchModeHotUpdatePreparation
     )
 
     Write-Host "Preparing Android HybridCLR artifacts and YooAsset package with Unity batchmode: $Executable"
-    & $Executable @unityArgs
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unity Android HotUpdate preparation failed with exit code $LASTEXITCODE. See: $LogPath"
+    $unityExitCode = Invoke-StellarUnityBatchProcess `
+        -Executable $Executable `
+        -Arguments $unityArgs `
+        -TimeoutMinutes $TimeoutMinutes `
+        -LogPath $LogPath
+    if ($unityExitCode -ne 0) {
+        throw "Unity Android HotUpdate preparation failed with exit code $unityExitCode. See: $LogPath"
     }
 
     $state = Read-StellarBuildState -Path $StatePath
@@ -460,10 +502,15 @@ $exitCode = 0
 
 try
 {
-    Assert-StellarAndroidEnvironment
+    if (-not $PrepareOnly) {
+        Assert-StellarAndroidEnvironment
+    }
 
     if ($HotUpdate -and $SkipBuild) {
         throw '-HotUpdate always regenerates Android artifacts and builds a fresh non-Development IL2CPP APK; -SkipBuild is not valid for this profile.'
+    }
+    if ($PrepareOnly -and -not $HotUpdate) {
+        throw '-PrepareOnly is available only with -HotUpdate.'
     }
     if ($HotUpdate -and ($CdnPort -lt 1 -or $CdnPort -gt 65535)) {
         throw '-CdnPort must be in 1..65535.'
@@ -511,16 +558,27 @@ try
                 throw "Prepared Android YooAsset package directory is missing: $($preparation.packageDirectory)"
             }
 
-            $verificationCdn = Start-StellarVerificationCdn `
-                -PackageDirectory $preparation.packageDirectory `
-                -Port $CdnPort `
-                -RunDirectory $runDirectory
-            $pipelineResult.hotUpdateCdn = [ordered]@{
-                url = $verificationCdn.Url
-                port = $verificationCdn.Port
-                processId = $verificationCdn.Pid
-                packageDirectory = $verificationCdn.PackageDirectory
-                accessLog = $verificationCdn.AccessLog
+            if ($PrepareOnly) {
+                $packageArchivePath = Join-Path $runDirectory 'StellarHotUpdateVerification-android.zip'
+                Compress-Archive `
+                    -Path (Join-Path $preparation.packageDirectory '*') `
+                    -DestinationPath $packageArchivePath `
+                    -CompressionLevel Optimal
+                $packageArchiveSha256 = (Get-FileHash -LiteralPath $packageArchivePath -Algorithm SHA256).Hash
+            }
+
+            if (-not $PrepareOnly) {
+                $verificationCdn = Start-StellarVerificationCdn `
+                    -PackageDirectory $preparation.packageDirectory `
+                    -Port $CdnPort `
+                    -RunDirectory $runDirectory
+                $pipelineResult.hotUpdateCdn = [ordered]@{
+                    url = $verificationCdn.Url
+                    port = $verificationCdn.Port
+                    processId = $verificationCdn.Pid
+                    packageDirectory = $verificationCdn.PackageDirectory
+                    accessLog = $verificationCdn.AccessLog
+                }
             }
         }
 
@@ -548,6 +606,7 @@ try
                 -OutputApk $ApkPath `
                 -StatePath $buildStatePath `
                 -LogPath $buildLog `
+                -TimeoutMinutes $BuildTimeoutMinutes `
                 -HotUpdate:$HotUpdate
         }
 
@@ -564,16 +623,39 @@ try
              $buildState.scriptingBackend -ne 'IL2CPP' -or
              $buildState.architectures -notmatch 'X86_64' -or
              $buildState.developmentBuild -or
+             $buildState.exportAsGoogleAndroidProject -or
+             $buildState.insecureHttpOption -ne 'AlwaysAllowed' -or
              $buildState.buildTarget -ne 'Android')) {
-            throw 'Android HotUpdate APK state does not prove a non-Development Android IL2CPP x86_64 build.'
+            throw 'Android HotUpdate build state does not prove a non-Development IL2CPP x86_64 APK with HTTP enabled.'
         }
     }
 
-    if (-not (Test-Path -LiteralPath $ApkPath))
+    if (-not (Test-Path -LiteralPath $ApkPath -PathType Leaf))
     {
-        throw "Verification APK not found: $ApkPath"
+        throw "Verification APK file not found (the path must be a file, not a Gradle export directory): $ApkPath"
     }
 
+    if ($PrepareOnly) {
+        $pipelineResult.status = 'PREPARED'
+        $pipelineResult.hotUpdatePackage = [ordered]@{
+            directory = $preparation.packageDirectory
+            packageName = $preparation.packageName
+            packageVersion = $preparation.packageVersion
+            fileCount = $preparation.packageFileCount
+            bundleCount = $preparation.packageBundleCount
+            archivePath = $packageArchivePath
+            archiveSha256 = $packageArchiveSha256
+            copyInstruction = 'Copy the contents of directory to the configured CDN document root.'
+        }
+        Write-Host 'PREPARED: Android HotUpdate APK and YooAsset package are ready.'
+        Write-Host "APK: $ApkPath"
+        Write-Host "YooAsset package directory: $($preparation.packageDirectory)"
+        Write-Host "Package: $($preparation.packageName) / $($preparation.packageVersion)"
+        Write-Host "Package archive: $packageArchivePath (SHA256: $packageArchiveSha256)"
+        Write-Host "Upload the CONTENTS of the package directory to the CDN root, then run Invoke-StellarApkSmoke.ps1 with the public host and port."
+        Write-Host "Artifacts: $runDirectory"
+    }
+    else {
     $existingSerial = Get-StellarEmulatorSerial
     $startedEmulator = [string]::IsNullOrWhiteSpace($existingSerial)
     $emulatorMemoryMegabytes = if ($HotUpdate) { 4096 } else { 2048 }
@@ -630,13 +712,13 @@ try
         $smokeArgs += '-RequireSafeAreaInsets'
     }
     if ($HotUpdate) {
+        # The parent has already started or reused the device and verified its available RAM.
         $smokeArgs += @(
             '-RequireHotUpdatePass',
             '-HotUpdateHost', '127.0.0.1',
             '-HotUpdatePort', [string]$CdnPort,
             '-HotUpdatePackageName', [string]$preparation.packageName,
-            '-HotUpdatePackageVersion', [string]$preparation.packageVersion,
-            '-EmulatorMemoryMegabytes', [string]$emulatorMemoryMegabytes
+            '-HotUpdatePackageVersion', [string]$preparation.packageVersion
         )
     }
 
@@ -674,6 +756,7 @@ try
     $pipelineResult.productVerificationStatus = 'PASS'
     Write-Host "PASS: Android Release Verification Pipeline profile '$($pipelineResult.profile)' completed."
     Write-Host "Artifacts: $runDirectory"
+    }
 }
 catch
 {
@@ -750,7 +833,7 @@ finally
         [IO.File]::WriteAllText($ReleaseGateEvidencePath, $pipelineJson, [Text.UTF8Encoding]::new($false))
     }
 
-    if ($pipelineResult.status -ne 'PASS')
+    if ($pipelineResult.status -notin @('PASS', 'PREPARED'))
     {
         Write-Host "FAIL artifacts: $runDirectory"
     }

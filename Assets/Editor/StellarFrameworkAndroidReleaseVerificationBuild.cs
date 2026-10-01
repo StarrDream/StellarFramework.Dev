@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using System;
 using System.IO;
-using System.Reflection;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -48,6 +47,7 @@ public static class StellarFrameworkAndroidReleaseVerificationBuild
         public string architectures;
         public bool developmentBuild;
         public bool internetPermission;
+        public bool exportAsGoogleAndroidProject;
         public string insecureHttpOption;
         public string buildResult;
         public int totalErrors;
@@ -131,9 +131,9 @@ public static class StellarFrameworkAndroidReleaseVerificationBuild
         AndroidArchitecture previousArchitectures = PlayerSettings.Android.targetArchitectures;
         bool previousDevelopment = EditorUserBuildSettings.development;
         bool previousBuildAppBundle = EditorUserBuildSettings.buildAppBundle;
+        bool previousExportAsGoogleAndroidProject = EditorUserBuildSettings.exportAsGoogleAndroidProject;
         bool previousInternetPermission = PlayerSettings.Android.forceInternetPermission;
-        FieldInfo httpOptionField = GetInsecureHttpOptionField();
-        object previousHttpOption = httpOptionField?.GetValue(null);
+        InsecureHttpOption previousHttpOption = PlayerSettings.insecureHttpOption;
 
         try
         {
@@ -141,17 +141,25 @@ public static class StellarFrameworkAndroidReleaseVerificationBuild
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.X86_64;
             EditorUserBuildSettings.development = false;
             EditorUserBuildSettings.buildAppBundle = false;
+            EditorUserBuildSettings.exportAsGoogleAndroidProject = false;
             if (hotUpdateProfile)
             {
                 PlayerSettings.Android.forceInternetPermission = true;
-                SetInsecureHttpOption(httpOptionField, "AlwaysAllowed");
+                PlayerSettings.insecureHttpOption = InsecureHttpOption.AlwaysAllowed;
             }
 
             buildState.scriptingBackend = PlayerSettings.GetScriptingBackend(androidTarget).ToString();
             buildState.architectures = PlayerSettings.Android.targetArchitectures.ToString();
             buildState.developmentBuild = EditorUserBuildSettings.development;
             buildState.internetPermission = PlayerSettings.Android.forceInternetPermission;
-            buildState.insecureHttpOption = httpOptionField?.GetValue(null)?.ToString() ?? "Unavailable";
+            buildState.exportAsGoogleAndroidProject = EditorUserBuildSettings.exportAsGoogleAndroidProject;
+            buildState.insecureHttpOption = PlayerSettings.insecureHttpOption.ToString();
+
+            if (EditorUserBuildSettings.exportAsGoogleAndroidProject)
+            {
+                throw new InvalidOperationException(
+                    "Android verification builds must produce an APK file, not an exported Gradle project.");
+            }
 
             var options = new BuildPlayerOptions
             {
@@ -172,6 +180,13 @@ public static class StellarFrameworkAndroidReleaseVerificationBuild
                 $"[StellarAndroidReleaseVerificationBuild] Result={summary.result} " +
                 $"Errors={summary.totalErrors} Warnings={summary.totalWarnings} " +
                 $"Size={summary.totalSize} Output={outputPath}");
+
+            if (Directory.Exists(outputPath) || !File.Exists(outputPath))
+            {
+                throw new InvalidOperationException(
+                    $"Android build did not produce an APK file at '{outputPath}'. " +
+                    "Check the Android export settings and build output.");
+            }
 
             if (summary.result != BuildResult.Succeeded)
             {
@@ -194,17 +209,17 @@ public static class StellarFrameworkAndroidReleaseVerificationBuild
             PlayerSettings.SetScriptingBackend(androidTarget, previousBackend);
             EditorUserBuildSettings.development = previousDevelopment;
             EditorUserBuildSettings.buildAppBundle = previousBuildAppBundle;
+            EditorUserBuildSettings.exportAsGoogleAndroidProject = previousExportAsGoogleAndroidProject;
             PlayerSettings.Android.forceInternetPermission = previousInternetPermission;
-            if (hotUpdateProfile && httpOptionField != null)
-            {
-                httpOptionField.SetValue(null, previousHttpOption);
-            }
+            PlayerSettings.insecureHttpOption = previousHttpOption;
 
             Debug.Log(
                 $"[StellarAndroidReleaseVerificationBuild] Restored backend={previousBackend}, " +
                 $"architectures={previousArchitectures}, development={previousDevelopment}, " +
-                $"buildAppBundle={previousBuildAppBundle}, internetPermission={previousInternetPermission}, " +
-                $"insecureHttpOption={previousHttpOption ?? "Unavailable"}.");
+                $"buildAppBundle={previousBuildAppBundle}, " +
+                $"exportAsGoogleAndroidProject={previousExportAsGoogleAndroidProject}, " +
+                $"internetPermission={previousInternetPermission}, " +
+                $"insecureHttpOption={previousHttpOption}.");
 
             buildState.completedAt = DateTimeOffset.Now.ToString("O");
             WriteBuildState(statePath, buildState);
@@ -228,43 +243,6 @@ public static class StellarFrameworkAndroidReleaseVerificationBuild
         }
 
         File.Move(tempPath, statePath);
-    }
-
-    private static FieldInfo GetInsecureHttpOptionField()
-    {
-        return typeof(PlayerSettings).GetField(
-            "insecureHttpOption",
-            BindingFlags.Public | BindingFlags.Static);
-    }
-
-    private static void SetInsecureHttpOption(FieldInfo field, string optionName)
-    {
-        if (field == null)
-        {
-            Debug.LogWarning(
-                "[StellarAndroidReleaseVerificationBuild] PlayerSettings.insecureHttpOption is unavailable; " +
-                "the Android verification APK will use the current Unity HTTP policy.");
-            return;
-        }
-
-        if (!field.FieldType.IsEnum)
-        {
-            throw new InvalidOperationException(
-                "PlayerSettings.insecureHttpOption is present but is not an enum field.");
-        }
-
-        object enabledOption;
-        try
-        {
-            enabledOption = Enum.Parse(field.FieldType, optionName, ignoreCase: false);
-        }
-        catch (ArgumentException exception)
-        {
-            throw new InvalidOperationException(
-                $"PlayerSettings.insecureHttpOption does not define '{optionName}'.", exception);
-        }
-
-        field.SetValue(null, enabledOption);
     }
 
     private static string ResolveOutputPath(bool hotUpdateProfile)

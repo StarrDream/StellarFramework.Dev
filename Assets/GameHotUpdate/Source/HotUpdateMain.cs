@@ -4,6 +4,7 @@ namespace HotUpdate
     {
         public static void Main()
         {
+            TankArenaGame.Launch();
             UnityEngine.Debug.Log("<color=red>Hello HybridCLR , 热更成功 ;</color>");
         }
 

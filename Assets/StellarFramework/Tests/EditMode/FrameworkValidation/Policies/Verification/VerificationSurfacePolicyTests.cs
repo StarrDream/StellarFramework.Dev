@@ -144,6 +144,8 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(builder, Does.Contain("BuildTarget.Android"));
             Assert.That(builder, Does.Contain("finally"));
             Assert.That(builder, Does.Contain("Prepare Android HotUpdate Release Gate"));
+            Assert.That(builder, Does.Contain("fallbackBuildScenePath"));
+            Assert.That(builder, Does.Contain("EditorBuildSettings.scenes = previousBuildScenes"));
 
             Assert.That(runtime, Does.Contain("RunAndroidRemoteAsync"));
             Assert.That(runtime, Does.Contain("AndroidJavaClass(\"com.unity3d.player.UnityPlayer\")"));
@@ -165,7 +167,10 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(androidBuild, Does.Contain("ScriptingImplementation.IL2CPP"));
             Assert.That(androidBuild, Does.Contain("AndroidArchitecture.X86_64"));
             Assert.That(androidBuild, Does.Contain("EditorUserBuildSettings.development = false"));
+            Assert.That(androidBuild, Does.Contain("EditorUserBuildSettings.exportAsGoogleAndroidProject = false"));
             Assert.That(androidBuild, Does.Contain("insecureHttpOption"));
+            Assert.That(androidBuild, Does.Contain("PlayerSettings.insecureHttpOption = InsecureHttpOption.AlwaysAllowed"));
+            Assert.That(androidBuild, Does.Contain("Android build did not produce an APK file"));
             Assert.That(androidBuild, Does.Contain("finally"));
 
             Assert.That(pipeline, Does.Contain("Prepare Android HotUpdate Release Gate"));
@@ -174,6 +179,16 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(pipeline, Does.Contain("if ($HotUpdate) { 4096 } else { 2048 }"));
             Assert.That(pipeline, Does.Contain("Get-StellarAndroidMemoryKilobytes"));
             Assert.That(pipeline, Does.Contain("StellarVerificationCdn.py"));
+            Assert.That(androidReleasePipeline, Does.Contain("[switch] $PrepareOnly"));
+            Assert.That(androidReleasePipeline, Does.Contain("$pipelineResult.status = 'PREPARED'"));
+            Assert.That(androidReleasePipeline, Does.Contain("Compress-Archive"));
+            Assert.That(androidReleasePipeline, Does.Contain("exportAsGoogleAndroidProject -or"));
+            Assert.That(androidReleasePipeline, Does.Contain("insecureHttpOption -ne 'AlwaysAllowed'"));
+            Assert.That(androidReleasePipeline, Does.Contain("-PathType Leaf"));
+            Assert.That(androidReleasePipeline, Does.Contain("Wait-Process -Id $process.Id"));
+            Assert.That(androidReleasePipeline, Does.Contain("Invoke-StellarUnityBatchProcess"));
+            Assert.That(smoke, Does.Contain("[UriHostNameType]::Dns"));
+            Assert.That(runtime, Does.Contain("UriHostNameType.Dns"));
             Assert.That(pipeline, Does.Contain("productVerificationStatus = 'PASS'"));
             Assert.That(androidReleasePipeline, Does.Contain("$statusCode -ne 504"));
             Assert.That(androidReleasePipeline, Does.Contain("GatewayTimeoutRecoveredFromBuildState"));

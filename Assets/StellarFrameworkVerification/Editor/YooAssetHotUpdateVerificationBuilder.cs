@@ -171,6 +171,8 @@ namespace StellarFrameworkVerification.Editor
             AndroidArchitecture previousArchitectures = PlayerSettings.Android.targetArchitectures;
             bool previousDevelopment = EditorUserBuildSettings.development;
             bool previousBuildAppBundle = EditorUserBuildSettings.buildAppBundle;
+            EditorBuildSettingsScene[] previousBuildScenes = EditorBuildSettings.scenes;
+            bool temporaryBuildSceneAdded = false;
 
             try
             {
@@ -179,6 +181,28 @@ namespace StellarFrameworkVerification.Editor
                 EditorUserBuildSettings.development = false;
                 EditorUserBuildSettings.buildAppBundle = false;
                 state.scriptingBackend = PlayerSettings.GetScriptingBackend(android).ToString();
+
+                bool hasEnabledBuildScene = previousBuildScenes.Any(scene =>
+                    scene.enabled && AssetDatabase.LoadAssetAtPath<SceneAsset>(scene.path) != null);
+                if (!hasEnabledBuildScene)
+                {
+                    const string fallbackBuildScenePath = "Assets/Scenes/SampleScene.unity";
+                    if (AssetDatabase.LoadAssetAtPath<SceneAsset>(fallbackBuildScenePath) == null)
+                    {
+                        throw new BuildFailedException(
+                            "Android HotUpdate preparation needs at least one saved scene in Build Settings, " +
+                            "and the fallback scene is missing: " + fallbackBuildScenePath);
+                    }
+
+                    EditorBuildSettings.scenes = new[]
+                    {
+                        new EditorBuildSettingsScene(fallbackBuildScenePath, true)
+                    };
+                    temporaryBuildSceneAdded = true;
+                    Debug.Log(
+                        "[HotUpdateVerification] Temporarily added " + fallbackBuildScenePath +
+                        " to Build Settings for HybridCLR AOT generation.");
+                }
 
                 // GenerateAll compiles HotUpdate.dll and builds a scripts-only Android IL2CPP
                 // player to regenerate AssembliesPostIl2CppStrip/Android from this target.
@@ -277,6 +301,11 @@ namespace StellarFrameworkVerification.Editor
             }
             finally
             {
+                if (temporaryBuildSceneAdded)
+                {
+                    EditorBuildSettings.scenes = previousBuildScenes;
+                    Debug.Log("[HotUpdateVerification] Restored the original EditorBuildSettings scenes.");
+                }
                 PlayerSettings.Android.targetArchitectures = previousArchitectures;
                 PlayerSettings.SetScriptingBackend(android, previousBackend);
                 EditorUserBuildSettings.development = previousDevelopment;

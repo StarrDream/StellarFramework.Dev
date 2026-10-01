@@ -544,10 +544,13 @@ namespace StellarFrameworkVerification.Runtime
         private static void ValidateAndroidConfig(AndroidHotUpdateVerificationConfig config)
         {
             if (config == null) throw new ArgumentNullException(nameof(config));
-            if (!string.Equals(config.host, "127.0.0.1", StringComparison.Ordinal))
+            if (string.IsNullOrWhiteSpace(config.host) ||
+                !string.Equals(config.host, config.host.Trim(), StringComparison.Ordinal) ||
+                (Uri.CheckHostName(config.host) != UriHostNameType.Dns &&
+                 Uri.CheckHostName(config.host) != UriHostNameType.IPv4))
             {
                 throw new ArgumentException(
-                    "Android verification CDN host must be 127.0.0.1 through adb reverse.",
+                    "Android verification CDN host must be a DNS hostname or IPv4 address without a scheme or path.",
                     nameof(config));
             }
             if (config.port < 1 || config.port > 65535)

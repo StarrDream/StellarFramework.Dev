@@ -10,9 +10,9 @@ param(
     [switch] $RequireUIAdaptationPass,
     [switch] $RequireSafeAreaInsets,
     [string] $HotUpdateHost = '127.0.0.1',
-    [int] $HotUpdatePort = 18743,
+    [ValidateRange(1, 65535)] [int] $HotUpdatePort = 18743,
     [string] $HotUpdatePackageName = 'StellarHotUpdateVerification',
-    [string] $HotUpdatePackageVersion = 'verification-v1',
+    [string] $HotUpdatePackageVersion = 'tank-arena-v7',
     [ValidateRange(1024, 8192)] [int] $EmulatorMemoryMegabytes = 2048
 )
 
@@ -22,6 +22,13 @@ $ErrorActionPreference = 'Stop'
 $startedAt = Get-Date
 $apk = (Resolve-Path $ApkPath).Path
 $metadata = Get-StellarApkMetadata -ApkPath $apk
+$hotUpdateHostType = [Uri]::CheckHostName($HotUpdateHost)
+if ($RequireHotUpdatePass -and
+    ([string]::IsNullOrWhiteSpace($HotUpdateHost) -or
+     $HotUpdateHost -ne $HotUpdateHost.Trim() -or
+     $hotUpdateHostType -notin @([UriHostNameType]::Dns, [UriHostNameType]::IPv4))) {
+    throw 'HotUpdate verification requires a DNS hostname or IPv4 address without a scheme or path.'
+}
 
 if ([string]::IsNullOrWhiteSpace($PackageName)) {
     $PackageName = $metadata.PackageName
@@ -360,11 +367,6 @@ try {
 
     & $script:StellarAdb -s $serial logcat -c
     & $script:StellarAdb -s $serial shell am force-stop $PackageName | Out-Null
-
-    if ($RequireHotUpdatePass -and
-        ($HotUpdateHost -ne '127.0.0.1' -or $HotUpdatePort -lt 1 -or $HotUpdatePort -gt 65535)) {
-        throw 'HotUpdate verification requires a valid loopback CDN host and port.'
-    }
 
     $component = "$PackageName/$LaunchActivity"
     $start = Start-StellarApkActivity -Serial $serial -Component $component -ExpectCache $false
