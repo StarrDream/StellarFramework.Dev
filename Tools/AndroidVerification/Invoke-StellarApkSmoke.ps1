@@ -12,7 +12,7 @@ param(
     [string] $HotUpdateHost = '127.0.0.1',
     [ValidateRange(1, 65535)] [int] $HotUpdatePort = 18743,
     [string] $HotUpdatePackageName = 'StellarHotUpdateVerification',
-    [string] $HotUpdatePackageVersion = 'tank-arena-v9',
+    [string] $HotUpdatePackageVersion = '1.0.0',
     [ValidateRange(1024, 8192)] [int] $EmulatorMemoryMegabytes = 2048
 )
 

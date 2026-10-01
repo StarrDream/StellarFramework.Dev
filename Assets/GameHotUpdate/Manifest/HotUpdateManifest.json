@@ -2,7 +2,7 @@
     "version": 1,
     "buildTarget": "Android",
     "hotUpdateAssemblyKey": "Assets/GameHotUpdate/Code/HotUpdate.dll.bytes",
-    "hotUpdateAssemblySha256": "c8e21b8f40df1804127ec5e700ae79cc2a9821bb2c2fb84f58bb13bd4b47b2f5",
+    "hotUpdateAssemblySha256": "3f1065cf5a2e3ab3e7425c616432f09cec9d3efd008e9cf20c1a63d0db56aafe",
     "hotUpdateEntryClass": "HotUpdate.HotUpdateMain",
     "hotUpdateEntryMethod": "Main",
     "aotMetadataKeys": [

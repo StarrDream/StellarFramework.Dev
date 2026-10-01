@@ -2,7 +2,7 @@ namespace HotUpdate
 {
     public static class HotUpdateMain
     {
-        public const string PackageVersion = "tank-arena-v9";
+        public const string PackageVersion = "1.0.0";
 
         public static void Main()
         {

@@ -26,4 +26,4 @@ Hostile armor and movement speed increase as eliminations advance the wave. The 
 
 ## Android verification
 
-Use **Tools → StellarFramework → Verification → Prepare Android HotUpdate Release Gate** to build the Android package. The prepared package version is `tank-arena-v9`. The Android smoke script verifies a cold download, the loaded assembly hash, metadata loading, entry-point execution, and a restart from the YooAsset cache. When testing against an external HTTP CDN, Android's insecure-download setting is enabled only for the verification APK; production builds should use HTTPS or set the appropriate Player setting explicitly.
+Use **Tools → StellarFramework → Verification → Prepare Android HotUpdate Release Gate** to build the Android package. The prepared package version is `1.0.0`. The Android smoke script verifies a cold download, the loaded assembly hash, metadata loading, entry-point execution, and a restart from the YooAsset cache. When testing against an external HTTP CDN, Android's insecure-download setting is enabled only for the verification APK; production builds should use HTTPS or set the appropriate Player setting explicitly.

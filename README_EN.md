@@ -2,6 +2,8 @@
 
 The Unity development project for StellarFramework maintainers. Runtime, Editor, Tools Hub, the Kit catalog, validation tools, and release scripts are maintained here. The General and Extensions user repositories are generated from this source.
 
+Current framework release: **1.0.0**
+
 ## Requirements
 
 - Unity Editor **2022.3.62f3c1** (the project version)
@@ -51,3 +53,7 @@ The publisher replaces all target content except <code>.git</code>. Check the ta
 ## For framework users
 
 Start with [StellarFramework General](https://github.com/StarrDream/StellarFramework). Add [StellarFramework.Extensions](https://github.com/StarrDream/StellarFramework.Extensions) for Algorithms, World, Flow, or HybridCLR HotUpdate. User documentation is under <code>Assets/StellarFramework/FrameworkDoc</code>.
+
+## Version
+
+See [VERSIONING.md](VERSIONING.md) for the shared release policy and synchronization process for Dev, General, and Extensions.
