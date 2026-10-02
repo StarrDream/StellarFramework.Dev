@@ -11,7 +11,6 @@
         "StellarFramework.PoolKit",
         "StellarFramework.SingletonKit",
         "StellarFramework.TimeKit",
-        "StellarFramework.Samples.ArchitectureDemo",
         "StellarFramework.LocalizationKit.Core",
         "StellarFramework.LocalizationKit.UnityUGUIAdapter",
         "UnityEngine.UI",

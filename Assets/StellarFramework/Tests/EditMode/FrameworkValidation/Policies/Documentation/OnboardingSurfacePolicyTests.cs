@@ -7,7 +7,7 @@ namespace StellarFramework.Tests.FrameworkValidation
     public sealed class OnboardingSurfacePolicyTests
     {
         [Test]
-        public void QuickStartPointsUsersToSingleArchitectureDemo()
+        public void QuickStartPointsUsersToTheTankArenaFrameworkDemo()
         {
             string docPath = Path.Combine(
                 Application.dataPath,
@@ -15,7 +15,7 @@ namespace StellarFramework.Tests.FrameworkValidation
 
             string source = File.ReadAllText(docPath);
 
-            Assert.That(source, Does.Contain("FrameworkArchitecture_Playable.unity"));
+            Assert.That(source, Does.Contain("FrameworkDemo.unity"));
             Assert.That(source, Does.Not.Contain("UIKit_Playable.unity"));
             Assert.That(source, Does.Not.Contain("ResKit_Playable.unity"));
             Assert.That(source, Does.Not.Contain("FrameworkValidation_Playable.unity"));

@@ -111,7 +111,7 @@ StellarFramework
 │  │  └─ UIKit
 │  └─ PlayMode
 ├─ Samples
-│  └─ ArchitectureDemo
+│  └─ TankArena
 └─ KitCatalog
    └─ KitDistributionCatalog.json、KitExportValidationMatrix.md
 
@@ -137,14 +137,14 @@ StellarFrameworkVerification 是维护者专用区，当前只保留发布前工
 
 | 类型 | 面向谁 | 目标 | 是否导出 | 多 Kit | 业务语义 |
 | --- | --- | --- | ---: | ---: | ---: |
-| Demo | 框架使用者 | 建立整体认知 | 否，仓库内 | 尽量少 | 极少 |
+| Demo | 框架使用者 | 建立整体认知并体验一局游戏 | 否，仓库内 | 多 Kit 协作 | 小型游戏闭环 |
 | Kit Behavior | 框架维护者 | 单 Kit 正确性 | 否 | 否 | 否 |
 | Performance | 框架维护者 | 性能趋势 | 否 | 可按需 | 否 |
 | Policy | 框架维护者 | 工程规则 | 否 | 是 | 否 |
 | Integration | 框架维护者 | 多 Kit 协作 | 否 | 是 | Fake-only |
 | Release | 框架维护者 | 真实分发链路 | 否 | 是 | 最小 |
 
-ArchitectureDemo 是唯一用户入门 Demo；各 Kit 的完整教学面回归 FrameworkDoc。它不是 Bug 回归套件，也不是完整游戏示范。GameHotUpdate 按 Runtime Delivery / Verification Fixture 处理，不归入普通 Demo。
+Tank Arena 是唯一用户入门 Demo；各 Kit 的完整 API、边界与接入步骤仍以 FrameworkDoc 为准。Demo 提供可玩闭环与常见 Kit 的实际组合，但不是 Bug 回归套件，也不替代真实项目。Android / Windows Release Gate 单独验证 YooAsset、ResKit 与 HybridCLR 的热更交付链路。
 
 Fixture 为测试服务，Demo 为学习服务。Addressables 与 AssetBundle 的测试资源必须进入专用 Fixture 路径，不能反向借用 Demo 资产。
 
@@ -239,7 +239,7 @@ NOT RUN 不等于 PASS；BLOCKED 不等于 PASS。Benchmark 未运行不得写�
 - P0 Behavior/Performance 和明显 Policy 已按安全方案分类。
 - asmdef、namespace、.meta/GUID、Catalog 和导出边界无破坏。
 - Full EditMode、必要 PlayMode、Catalog/Docs/Verification Policy 已有真实证据。
-- 未新增大型 Demo、ValidationKit、TestingKit、BenchmarkKit 或自定义 Test Engine。
+- Tank Arena 是唯一用户示例；维护者 Verification 仍不承载游戏业务、正式美术或可发布内容。
 
 ## 10. 常见边界
 

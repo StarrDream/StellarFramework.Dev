@@ -33,7 +33,7 @@ if (-not [string]::IsNullOrWhiteSpace($ReleaseGateEvidencePath))
         $ReleaseGateEvidencePath = [IO.Path]::GetFullPath((Join-Path $projectRoot $ReleaseGateEvidencePath))
     }
 }
-$defaultApkPath = Join-Path $projectRoot 'Builds\AndroidVerification\StellarFramework-ArchitectureDemo-x86_64-release.apk'
+$defaultApkPath = Join-Path $projectRoot 'Builds\AndroidVerification\StellarFramework-FrameworkDemo-x86_64-release.apk'
 $hotUpdateDefaultApkPath = Join-Path $projectRoot 'Builds\AndroidVerification\StellarFramework-HotUpdate-x86_64-release.apk'
 $selectedDefaultApkPath = if ($HotUpdate) { $hotUpdateDefaultApkPath } else { $defaultApkPath }
 
@@ -70,7 +70,7 @@ $pipelineResult = [ordered]@{
     completedAt = $null
     projectRoot = $projectRoot
     apk = $ApkPath
-    profile = if ($HotUpdate) { 'HotUpdate' } else { 'ArchitectureDemoSmoke' }
+    profile = if ($HotUpdate) { 'HotUpdate' } else { 'FrameworkDemoSmoke' }
     buildMode = if ($SkipBuild) { 'Skipped' } else { $null }
     buildResult = $null
     buildWarnings = $null

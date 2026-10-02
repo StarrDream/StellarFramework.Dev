@@ -13,10 +13,10 @@ using UnityEngine;
 public static class StellarFrameworkAndroidReleaseVerificationBuild
 {
     private const string ScenePath =
-        "Assets/StellarFramework/Samples/ArchitectureDemo/Scene/FrameworkArchitecture_Playable.unity";
+        "Assets/StellarFramework/Samples/TankArena/Scene/FrameworkDemo.unity";
 
     private const string DefaultRelativeOutputPath =
-        "Builds/AndroidVerification/StellarFramework-ArchitectureDemo-x86_64-release.apk";
+        "Builds/AndroidVerification/StellarFramework-FrameworkDemo-x86_64-release.apk";
 
     private const string DefaultRelativeStatePath =
         "Library/StellarFramework/AndroidVerification/android-build-state.json";
@@ -100,7 +100,7 @@ public static class StellarFrameworkAndroidReleaseVerificationBuild
     {
         if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) == null)
         {
-            throw new FileNotFoundException("ArchitectureDemo validation scene not found.", ScenePath);
+            throw new FileNotFoundException("Framework Demo validation scene not found.", ScenePath);
         }
 
         string outputPath = ResolveOutputPath(hotUpdateProfile);
@@ -118,7 +118,7 @@ public static class StellarFrameworkAndroidReleaseVerificationBuild
             status = "RUNNING",
             startedAt = DateTimeOffset.Now.ToString("O"),
             outputPath = outputPath,
-            profile = hotUpdateProfile ? "HotUpdate" : "ArchitectureDemoSmoke",
+            profile = hotUpdateProfile ? "HotUpdate" : "FrameworkDemoSmoke",
             buildTarget = BuildTarget.Android.ToString(),
             buildResult = "Unknown",
             totalSizeBytes = "0",

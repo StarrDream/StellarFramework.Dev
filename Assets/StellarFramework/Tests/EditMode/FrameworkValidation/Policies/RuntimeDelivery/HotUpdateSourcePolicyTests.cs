@@ -10,7 +10,7 @@ namespace StellarFramework.Tests.FrameworkValidation
         public void HotUpdateMainPrintsHybridClrSuccessMessage()
         {
             string source = File.ReadAllText(ToAbsoluteAssetPath(
-                "Assets/GameHotUpdate/Source/HotUpdateMain.cs"));
+                "Assets/StellarFramework/Samples/TankArena/Runtime/HotUpdateMain.cs"));
 
             Assert.That(source, Does.Contain("Hello HybridCLR , 热更成功 ;"));
         }

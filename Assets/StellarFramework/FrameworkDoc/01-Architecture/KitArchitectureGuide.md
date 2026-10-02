@@ -239,7 +239,7 @@ SimulationKit 不依赖 UnityEngine、TimeKit、GridKit、SpatialKit、ResKit、
 - Editor 代码是否独立拆分取决于职责，而不是目录名：构建正确性所必需的生成器可以随 Core 交付，例如 SingletonKit 的 `SingletonGenerator`；ToolsHub 面板、审计器、CodeGen UX 等可选开发体验则独立为 tooling Profile。
 - Recommended Profile 只是推荐组合，不是新的 Kit。它必须复用原子 Profile 的真实依赖闭包，不能为了“一键导入”重新制造大一统模块。
 - Exporter 面向用户只显示“基础功能 / 完整功能 / 扩展功能”交付模型；Foundation / Extension / Adapter 继续只承担内部依赖约束，不改变多选、搜索、依赖去重、UPM 安装或导出闭包。
-- 新 Kit 最低交付应包含 Runtime 源码、asmdef、使用/源码文档、测试、Catalog Profile、验收矩阵、README 登记和干净工程导入验证。Demo / Sample 不属于强制项；只有无法通过 Guide、自动测试或现有 ArchitectureDemo 清晰表达的交互/跨 Kit 行为才新增。
+- 新 Kit 最低交付应包含 Runtime 源码、asmdef、使用/源码文档、测试、Catalog Profile、验收矩阵、README 登记和干净工程导入验证。Demo / Sample 不属于强制项；已有 Tank Arena 用于演示常见跨 Kit 业务流程，不要求每个 Kit 都出现在 Demo 中。
 
 ## 新 Kit 的 Validation Contract
 
@@ -248,7 +248,7 @@ SimulationKit 不依赖 UnityEngine、TimeKit、GridKit、SpatialKit、ResKit、
 - Behavior Tests：公开 API、边界输入、失败原子性和 Regression。
 - Performance：是否需要、目标规模、操作次数和可复现证据。
 - PlayMode：只有真实 Unity Runtime/Lifecycle/Resource 需要时才要求，并写明原因。
-- Demo：只有确实无法通过文档、自动测试或现有 ArchitectureDemo 表达时才新增，并明确最小教学目标。
+- Demo：只在能显著说明使用流程或跨 Kit 协作时扩展现有 Tank Arena；不要求每个 Kit 都加入游戏，也不以文字提及代替实际接入。
 - Policy：asmdef、依赖、Catalog、导出闭包和禁止依赖。
 - Integration：是否扩展维护者 Verification，使用 Fake-only 语义。
 - Release：export、clean import、Player、IL2CPP、Addressables、HotUpdate。

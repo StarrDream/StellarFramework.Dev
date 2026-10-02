@@ -12,8 +12,8 @@ namespace StellarFramework.Tests.FrameworkValidation
         {
             string source = ReadQuickStartSource();
 
-            Assert.That(source, Does.Contain("Title = \"1. 打开 ArchitectureDemo\""));
-            Assert.That(source, Does.Contain("ArchitectureDemoScenePath"));
+            Assert.That(source, Does.Contain("Title = \"1. 运行坦克大战 Framework Demo\""));
+            Assert.That(source, Does.Contain("FrameworkDemoScenePath"));
             Assert.That(source, Does.Contain("FrameworkDocIndexPath"));
             Assert.That(source, Does.Not.Contain("BuildSamples"));
             Assert.That(source, Does.Not.Contain("QueueSampleBuild"));
@@ -119,7 +119,7 @@ namespace StellarFramework.Tests.FrameworkValidation
         [Test]
         public void QuickStartReferencedPathsExistOnDisk()
         {
-            Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/Samples/ArchitectureDemo/Scene/FrameworkArchitecture_Playable.unity")), Is.True);
+            Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/Samples/TankArena/Scene/FrameworkDemo.unity")), Is.True);
             Assert.That(Directory.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/Samples/Common")), Is.False);
             Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/00-Overview/快速开始.md")), Is.True);
             Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/README.md")), Is.True);
@@ -129,12 +129,12 @@ namespace StellarFramework.Tests.FrameworkValidation
         }
 
         [Test]
-        public void ArchitectureDemoSupportAssetsCannotRecreateLegacySamplesCommon()
+        public void TankArenaSupportAssetsCannotRecreateLegacySamplesCommon()
         {
             string installer = ReadAssetText(
                 "Assets/StellarFramework/Editor/LocalizationKit/SourceHanSansExampleFontInstaller.cs");
 
-            Assert.That(installer, Does.Contain("Samples/ArchitectureDemo/Fonts/SourceHanSans"));
+            Assert.That(installer, Does.Contain("Samples/TankArena/Resources/Fonts/SourceHanSansCN-Regular.otf"));
             Assert.That(installer, Does.Not.Contain("Samples/Common"));
         }
 

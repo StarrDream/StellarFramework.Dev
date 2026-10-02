@@ -18,9 +18,9 @@
 2. 在 Unity Hub 中添加并打开仓库目录。
 3. 等待资源导入和 Package Manager 完成。
 4. 从菜单 **StellarFramework → Tools Hub** 打开工具中心，在 Start Here 查看入门说明。
-5. 打开 <code>Assets/StellarFramework/Samples/ArchitectureDemo/Scene/FrameworkArchitecture_Playable.unity</code>，点击 Play。
+5. 打开 <code>Assets/StellarFramework/Samples/TankArena/Scene/FrameworkDemo.unity</code>，等待编译完成后点击 Play。
 
-ArchitectureDemo 展示一段可交互的 Model–Service–View（MSV）业务循环，并包含 UI、本地化和安全区适配示例。各 Kit 的专项示例见 <code>Assets/StellarFramework/Samples</code>。
+Tank Arena 是框架的可玩整体示例，覆盖坦克战斗、战局结算和本地存档，并展示 Architecture、BindableKit、FSMKit、ActionKit、EventKit、PoolKit、ConfigKit、SaveKit、SettingsKit、LocalizationKit 与 UIAdaptationKit 的实际协作。热更新发布需单独运行 Android / Windows Release Gate；Editor 预览不会下载远端包。逐 Kit 的 API 与完整接入步骤见 <code>Assets/StellarFramework/FrameworkDoc/02-Kits</code>。
 
 ## 导出 Kit 到游戏项目
 

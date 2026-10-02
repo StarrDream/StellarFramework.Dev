@@ -564,7 +564,7 @@ Architecture<T>
 
 当前架构行为主要通过以下方式间接验证：
 
-- `ArchitectureDemo`
+- `TankArena`
   验证 `Architecture / Model / Service / View / UI` 的基础协作链路
 - `Samples`
   验证模块在架构容器中的接线方式

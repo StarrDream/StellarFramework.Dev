@@ -21,7 +21,7 @@ namespace StellarFrameworkVerification.Editor
     {
         private const BuildTarget Target = BuildTarget.StandaloneWindows64;
         private const string ScenePath =
-            "Assets/StellarFramework/Samples/ArchitectureDemo/Scene/FrameworkArchitecture_Playable.unity";
+            "Assets/StellarFramework/Samples/TankArena/Scene/FrameworkDemo.unity";
 
         [Serializable]
         private sealed class BuildState

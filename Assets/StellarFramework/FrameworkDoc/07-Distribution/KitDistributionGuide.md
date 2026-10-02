@@ -114,11 +114,11 @@ Recommended Profile 是“常见项目目标的推荐组合”，不是新的 Ki
 
 Catalog 当前不提供 `sample` Profile，Export 也不再提供“样例包”页。用户入门统一从：
 
-`Assets/StellarFramework/Samples/ArchitectureDemo`
+`Assets/StellarFramework/Samples/TankArena`
 
-进入；单个 Kit 的最小用法、代码片段、依赖边界和排错统一由随包导出的 `FrameworkDoc` Guide 承担。
+进入。发布仓库时会显式包含该 Sample 和 `Assets/StreamingAssets/TankArena` 配置；正式 Kit payload 仍按使用者所选 Profile 导出。单个 Kit 的完整 API、最小用法、依赖边界和排错统一由随包导出的 `FrameworkDoc` Guide 承担。
 
-只有当某个跨 Kit 行为确实无法通过 Guide、自动测试或现有 ArchitectureDemo 表达时，才重新评估新增 Demo。Demo 是教学入口，不承担 Kit 分发或 Release Gate 职责。
+Tank Arena 展示一局可玩的跨 Kit 业务流程；它不替代逐 Kit 指南、自动化回归或平台 Release Gate。
 
 ## 资源后端与代码热更新可选层
 

@@ -202,7 +202,7 @@ namespace StellarFramework.Tests.FrameworkValidation
         }
 
         [Test]
-        public void FullPayloadAcceptsFrameworkAndGameHotUpdateChildPaths()
+        public void FullPayloadAcceptsFrameworkAndSampleRuntimePaths()
         {
             Assert.That(
                 InvokePublisherBool(
@@ -212,7 +212,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(
                 InvokePublisherBool(
                     "IsIncludedInFullPayload",
-                    "Assets/GameHotUpdate/Source/HotUpdateMain.cs"),
+                    "Assets/StellarFramework/Samples/TankArena/Runtime/HotUpdateMain.cs"),
                 Is.True);
         }
 

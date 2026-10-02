@@ -92,7 +92,7 @@ The smoke runner:
 7. fails on configured Unity Error / FATAL EXCEPTION / ANR patterns;
 8. force-stops and restarts the app, then repeats process/log validation.
 
-For a build that contains the ArchitectureDemo UIAdaptation integration, add `-RequireUIAdaptationPass` to require a SafeAreaRoot geometry record. Add `-RequireSafeAreaInsets` when the connected Android device has an active display cutout; this requires at least one cold-start or restart record with non-zero Safe Area insets. Android emulator images commonly expose cutout overlays through `cmd overlay`; restore the overlay to its original state after the check.
+For a build that contains the Tank Arena Framework Demo UIAdaptation integration, add `-RequireUIAdaptationPass` to require a SafeAreaRoot geometry record. Add `-RequireSafeAreaInsets` when the connected Android device has an active display cutout; this requires at least one cold-start or restart record with non-zero Safe Area insets. Android emulator images commonly expose cutout overlays through `cmd overlay`; restore the overlay to its original state after the check.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Tools\AndroidVerification\Invoke-StellarAndroidReleaseVerification.ps1 `
@@ -121,7 +121,7 @@ For emulator/ADB-only validation of an already built APK:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Tools\AndroidVerification\Invoke-StellarAndroidReleaseVerification.ps1 `
   -SkipBuild `
-  -ApkPath .\Builds\AndroidEmulator\StellarFramework-ArchitectureDemo-x86_64.apk
+  -ApkPath .\Builds\AndroidEmulator\StellarFramework-FrameworkDemo-x86_64.apk
 ```
 
 ## Android Release IL2CPP HotUpdate profile

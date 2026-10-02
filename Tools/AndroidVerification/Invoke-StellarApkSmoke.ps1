@@ -209,7 +209,7 @@ function Read-StellarUIAdaptationEvidence {
         foreach ($path in $Paths) {
             if (Test-Path -LiteralPath $path) {
                 Select-String -LiteralPath $path `
-                    -Pattern '\[ArchitectureDemo\]\[UIAdaptation\].*result=(PASS|FAIL).*insets=(True|False)' `
+                    -Pattern '\[StellarTankArena\]\[UIAdaptation\].*result=(PASS|FAIL).*insets=(True|False)' `
                     -AllMatches
             }
         }

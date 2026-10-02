@@ -1,40 +1,32 @@
 # Demo 索引
 
-StellarFramework 当前只保留一个用户可运行 Demo。
+## 唯一完整玩法 Demo
 
-## 唯一 Demo
+| 入口 | 内容 |
+| --- | --- |
+| `Assets/StellarFramework/Samples/TankArena/Scene/FrameworkDemo.unity` | 可玩坦克生存流程；实际接入 Architecture / BindableKit、FSMKit、ActionKit、EventKit、PoolKit、ConfigKit、SaveKit、SettingsKit、LocalizationKit、UIAdaptationKit 与 LogKit。热更交付另由 Release Gate 覆盖 YooAsset、ResKit 和 HybridCLR。资源修改见 [Tank Arena 案例说明](../../Samples/TankArena/CaseStudy.md)。 |
 
-| 入口 | 用途 |
-| :--- | :--- |
-| `Assets/StellarFramework/Samples/ArchitectureDemo/Scene/FrameworkArchitecture_Playable.unity` | 建立 Architecture / MSV、BindableKit、ActionKit、UIKit、LocalizationKit、LogKit 的整体协作认知 |
+在 **Unity Editor** 中直接运行该场景，会由仅编辑器代码调用本地 `HotUpdateMain.Main()`。要验证真实热更新包下载与加载，应运行 Android / Windows HotUpdate Release Gate；两条路径不能混为一谈。
 
-## 为什么不再“一 Kit 一个 Sample”
+## 如何学习其他 Kit
 
-过去每个 Kit 都维护独立 Playable 场景，带来了大量场景 Builder、公共资源、分发 Profile、Smoke Test 和文档同步成本。很多 Sample 最终变成“为了验证 Sample 而维护 Sample”，而不是帮助真实项目开发。
+Demo 通过一局游戏展示多 Kit 的协作方式，不承担每个 Kit 的完整 API 教学。使用某个 Kit 前，先读它的 `FrameworkDoc/02-Kits` 指南，确认最小依赖、可选 Adapter、初始化顺序和故障处理；不要用 HUD 面板中的 Kit 名称推断 Sample 已覆盖全部功能。
 
-当前规则：
+- API、依赖边界和接入示例：`Assets/StellarFramework/FrameworkDoc/02-Kits`
+- 源码组织：各 Kit 对应源码指南
+- 行为与工程策略验证：`Assets/StellarFramework/Tests`
+- Player、资源包和热更新发布：`Assets/StellarFrameworkVerification`
 
-- 一个小 Demo 负责“第一次理解框架”。
-- 每个 Kit 的完整用法由对应 `FrameworkDoc/02-Kits` Guide 负责。
-- 核心行为由 EditMode / PlayMode 自动测试负责。
-- 没有独立场景的 Kit，用随包导出的 Guide 使用案例和 Kit 专项 EditMode / PlayMode 测试覆盖；Adapter 的职责边界与导入依赖由 Catalog 审计。
-- 性能由 Benchmark / Performance Gate 负责。
-- 发布与热更新集成由 `StellarFrameworkVerification` 负责。
-- 不因为缺一个可视化场景就默认新增 Sample。
+## 选择路线
 
-## 推荐路径
-
-1. Tools Hub -> Start Here -> Quick Start。
-2. 打开并运行 `ArchitectureDemo`。
-3. 根据项目需求选择对应 Kit Guide。
-4. 需要理解内部实现时再阅读对应源码 Guide。
-5. 需要确认框架质量时查看 Tests 与 Verification，而不是依赖 Demo 人工点一遍。
+1. 从 [快速开始](../00-Overview/快速开始.md) 打开 Tank Arena。
+2. 根据项目需要选择对应 Kit Guide，先接入 Core，再按需添加 Unity Adapter、Editor Tools 或资源后端。
+3. 需要查看 Demo 实现时阅读 [Tank Arena 源码结构](Samples-源码文档-Guide.md)。
+4. 需要验证生产交付时运行对应平台的 Release Gate。
 
 ## Kit 使用案例入口
 
-`FrameworkDoc/02-Kits` 中每个 Runtime Profile 都在分发 Catalog 里声明正式 Guide，并由 `KitCatalogAuditPolicyTests` 检查文档路径与 Profile 依赖闭包。Guide 内的 API 案例覆盖纯 C# Core、Unity Adapter、ToolsHub 工作流和跨 Kit 集成；没有单独 Playable 场景的 Kit 不会被误认为已由 ArchitectureDemo 演示。
-
-新增的独立案例入口：
+`FrameworkDoc/02-Kits` 中的指南覆盖各 Runtime Profile 的 API、边界和接入步骤，发布 Catalog 的文档闭包由 Kit Catalog policy 检查。以下指南还包含跨 Kit 或具体场景案例：
 
 - [GridKit Unity Projection：Terrain 到基础通行网格](../02-Kits/GridKitUnityProjection/GridKit-UnityProjectionAdapter-Guide.md)
 - [LocalizationKit：缺词回退与当前语言查询](../02-Kits/LocalizationKit/LocalizationKit-Guide.md)

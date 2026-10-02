@@ -49,7 +49,7 @@ External release gates
 
 Catalog 已经没有 `sample` Profile，但 Export 窗口仍保留空的“样例”页，旧分发文档也仍指导开发者从 Export 导出样例包。
 
-处理：删除空 Sample 导出页与 `GetSourceProjectSampleProfiles()`，分发文档统一为“一个 ArchitectureDemo + 随包 Guide + 自动测试 / Verification”的现行策略。
+处理：删除空 Sample 导出页与 `GetSourceProjectSampleProfiles()`。现行用户入口为 Tank Arena；Kit API 教学由对应 Guide 承担，自动测试与 Verification 仍各司其职。
 
 ### P1 — Tooling Profile 的 PlayerRuntime 元数据不一致
 

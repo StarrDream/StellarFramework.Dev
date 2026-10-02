@@ -391,13 +391,12 @@ MonoBehaviour:
   settings:
     filters:
     - assemblyNames: []
-      groupNames:
-      - (^|\.)StellarFramework\.Tests\.PlayMode\.ArchitectureDemoPlayModeTests($|\.)
+      groupNames: []
       categoryNames: []
       testNames: []
       synchronousOnly: 0
     sceneBased: 0
-    originalScene: Assets/StellarFramework/Samples/ArchitectureDemo/Scene/FrameworkArchitecture_Playable.unity
+    originalScene: Assets/Scenes/SampleScene.unity
     bootstrapScene: Assets/InitTestScene639255167496548738.unity
     runInBackgroundValue: 1
     consoleErrorPaused: 0

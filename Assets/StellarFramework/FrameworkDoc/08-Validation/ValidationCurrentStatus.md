@@ -2,7 +2,17 @@
 
 > 这是面向维护者的“当前状态摘要”。历史阶段证据、Benchmark 明细与旧 Profile 数量保留在 `KitExportValidationMatrix.md`，不要把历史数字继续堆到本页。
 
-## 2026-09-30 二次审查增量
+## 2026-10-02 Tank Arena Demo 与平台验证
+
+- 唯一用户 Demo 为 `Assets/StellarFramework/Samples/TankArena/Scene/FrameworkDemo.unity`；旧 ArchitectureDemo 场景、资源和专属 PlayMode 测试已移除，ToolsHub 与快速开始入口均指向 Tank Arena。
+- 案例源码位于 `Assets/StellarFramework/Samples/TankArena/Runtime`，热更程序集标识为 `HotUpdate`；默认配置位于 `Assets/StreamingAssets/TankArena/demo-config.json`。案例说明见 `Assets/StellarFramework/Samples/TankArena/CaseStudy.md`。场景视觉内容由 Sample 内的 Prefab、材质、贴图和字体资源组成；运行时代码通过实例化 Prefab 组装场景，不以代码创建画面节点或几何体。
+- Windows x64 Release HotUpdate Gate：`Builds/WindowsVerification/HotUpdate-v1.0.0-20261002-091604`，StandaloneWindows64 / IL2CPP，YooAsset 包版本 `1.0.0`、6 个 Bundle，Player 构建 0 errors / 1 warning。Player 实测验证 Range 下载中断后以 262144 字节偏移续传、从 ResKit/YooAsset 读取 Manifest、加载 `HotUpdate` 程序集并进入 Tank Arena 战斗。运行记录位于 `C:/Users/Administrator/AppData/LocalLow/DefaultCompany/StellarFramework/Player.log`。
+- Android x86_64 Release HotUpdate APK：`Builds/AndroidVerification/StellarFramework-HotUpdate-x86_64-release.apk`，IL2CPP，构建 0 errors / 1 warning。MuMu (`emulator-5556`, Android 12 / API 32, 720x1280) 冷启动下载 6 个文件 / 1,934,936 字节，校验程序集 SHA256 并加载 4 项 AOT metadata；重启命中 15 个本地缓存文件，下载 0 字节。门禁记录位于 `Tools/AndroidVerification/Results/20261002-090714/pipeline-result.json`。
+- Android 上 UIAdaptationKit 在冷启动与重启时均记录 `PASS`，Portrait breakpoint 与安全区锚点一致。MuMu 此次未报告安全区 inset；本次设备结果不代表带挖孔或刘海的硬件验证。
+- LocalizationKit 在 MuMu 上完成 English → 中文 → English 实机切换，标题、HUD、按钮和包版本标签均随语言变化。截图见 `Tools/AndroidVerification/Results/LocalizationManual-20261002/locale-switch.png` 与 `locale-revert.png`；冷启动、缓存重启及 UIAdaptation 复测记录见同目录 `result.json`。
+- 本轮针对快速开始文档、案例资源边界、发布排除规则、ToolsHub 场景入口和热更源码的 7 项 EditMode 回归测试全部通过。Windows 与 Android BuildReport 各记录 1 条 warning；Release Gate 未导出 warning 明细。两平台 Player / APK 运行均完成热更与案例启动验证。
+
+## 2026-09-30 二次审查增量（历史记录，早于当前 Demo 更新）
 
 - ToolsHub、Kit Catalog、asmdef 边界和仓库发布树完成静态复查：84 个原子 Profile ID 唯一，82 个 Stable / 2 个 RC；依赖、源码和文档路径完整，Profile 输出无重复；102 个 asmdef 的内部依赖图无环，Runtime 到 Editor 引用为 0。
 - FlowKit 业务骨架生成器的 Assets 路径边界已修复：`AssetsBackup` 等相邻目录不再被误判为 `Assets` 子目录。Unity Editor 与对应 EditMode 测试程序集编译通过；精确回归 `ProjectScaffolderRejectsPathsOutsideAssetsDirectoryBoundary` job `7aa89f32` **1/1 PASS**，Unity Diagnose 为 0 errors / 0 warnings。

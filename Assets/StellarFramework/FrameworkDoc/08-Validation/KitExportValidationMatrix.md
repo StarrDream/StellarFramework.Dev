@@ -93,7 +93,7 @@ Catalog 使用 `tier` / `category` 描述架构职责，并用 `recommendedProfi
 Demo / Verification 边界：
 
 - Catalog 不再包含任何 `samples.*` Profile。
-- `Assets/StellarFramework/Samples/ArchitectureDemo` 只作为仓库内唯一入门 Demo，不参与 Kit 导出和 Full/Base Package 分发。
+- `Assets/StellarFramework/Samples/TankArena` 只作为仓库内唯一用户 Demo；发布 Catalog 会显式携带 Sample 和配置，Kit Profile 仍独立选择与导出。
 - `StellarFrameworkVerification` 只用于维护者发布验证，不注册为 Kit、Demo 或 Adapter Profile。
 - 自动回归由 `Assets/StellarFramework/Tests` 负责，不再通过逐 Kit Playable Sample 证明正确性。
 
