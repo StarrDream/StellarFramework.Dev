@@ -13,6 +13,24 @@ StellarFramework 当前明确分工：
 
 因此不存在“大一统 HotUpdateKit”。内容热更与代码热更是两个独立职责。
 
+## 职责边界
+
+| 部件 | 负责 | 不负责 |
+| --- | --- | --- |
+| `HybridCLRKit` Runtime | 从已就绪的 ResKit Loader 读取并校验热更 Manifest、DLL 与 AOT metadata；加载 metadata 和代码程序集；调用配置的入口；返回可检查的状态与错误。 | 初始化内容系统、检查或下载 YooAsset 内容版本、缓存/CDN 管理、启动页面和重试策略、业务逻辑及在线修改场景/Prefab。 |
+| `ResKit.YooAsset` / `YooAssetContentUpdater` | 初始化 YooAsset Package，检查版本与 Manifest，下载和缓存资源 Bundle；向 ResKit 提供统一加载接口。 | 执行 C# 程序集加载或决定热更入口。 |
+| `HybridCLRKit.Tools` | 在 Unity Editor 中准备 HybridCLR 代码生成、热更程序集导出与相关诊断。 | Player 运行时更新流程。 |
+| `HotUpdate Publisher` | 编排变更分类、构建、制品校验和发布；通过本地目录或 S3 兼容目标发布不可变文件，并最后更新版本指针。 | Player 中的下载器或程序集加载器；它复用 YooAsset 与 HybridCLR 的构建/运行能力。 |
+| 项目启动层 | 初始化 ResKit/YooAsset，决定提示、同意、等待、重试、回退和何时调用 `HybridCLRKit.RunAsync`。 | 把项目自己的启动、账号或业务策略塞进 HybridCLRKit。 |
+
+运行顺序是先准备内容，再加载代码：
+
+```text
+项目启动层 → ResKit.YooAsset 内容更新 → HybridCLRKit 读取 DLL/metadata → 调用 HotUpdate 入口
+```
+
+HybridCLRKit 位于 General 主仓，但在架构依赖图中仍是可选的 `extension / runtime-delivery` Kit。它依赖 ResKit 和 HybridCLR；项目不使用代码热更时，无需导入它。General 项目的 UPM Manifest 为保证整仓可编译会包含该插件依赖，单 Kit 导出则只携带依赖摘要中列出的包。
+
 ## 推荐启动顺序
 
 生产项目推荐：

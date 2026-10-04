@@ -7,6 +7,7 @@
 - 每个可导出 Profile 都声明自己的源路径、依赖 Profile、UPM 依赖和明确排除的能力。
 - Runtime Profile 通过 `documentationPaths` 显式声明随独立包交付的正式 Guide；文档不再依赖开发者回到母仓库自行寻找。
 - Runtime Kit Profile 额外声明 `tier` 和 `category`，用于 Foundation / Extension / Adapter 的架构约束；不会改变实际依赖闭包。Export 的用户导航使用独立的“基础功能 / 完整功能 / 扩展功能”交付视角，不直接暴露 tier。
+- General / Extensions 是源码发布仓归属；Foundation / Extension / Adapter 是 Kit 的依赖层级。HybridCLRKit 随 General 发布，但仍是可选的 Extension-tier Runtime Kit。
 - 每个原子 Profile 还声明 `maturity=stable / rc / experimental`。`availability` 只表示能否安装/导出，`maturity` 才表示生产成熟度。
 - 导出时会自动计算依赖闭包；开发者只选择目标 Kit，不必手动猜测依赖顺序。
 - 每个 Kit 包均采用 Bootstrap + Payload 两段式导入：先导入无第三方依赖的安装器，再安装该包依赖闭包中缺失的 UPM 包，最后导入 Kit 源码 Payload。没有 UPM 依赖的 Kit 会直接进入 Payload 导入阶段。
@@ -30,9 +31,9 @@ Recommended Profile 是“常见项目目标的推荐组合”，不是新的 Ki
 | ResKit Complete | `reskit.tools` | 完整 ResKit Core + AssetsMap + 资源审计/生成工具 | AssetBundle、Addressables、YooAsset、HybridCLR |
 | UIAdaptationKit Complete | `uiadaptation.tools` | 独立 UGUI 多机型适配 + SafeArea/Cutout/Fallback + Preview/Validator | UIKit、ResKit、SingletonKit |
 | UIKit Complete | `uikit.reskit + uikit.tools + uiadaptation.tools + reskit.tools` | 完整 UIKit Runtime/Tooling + ResKit + 独立 UIAdaptationKit | Addressables、YooAsset、HybridCLR |
-| Hot Update Full | `reskit.yooasset + reskit.tools + hybridclrkit.tools` | 需要资源内容更新 + C# 代码热更的项目 | Addressables |
+| Hot Update Full | `reskit.yooasset + reskit.tools + hybridclrkit.tools` | 需要资源内容更新 + C# 代码热更的项目；组合随 General 发布 | Addressables |
 
-如果项目已经拥有自己的 UI、Settings、资源系统，只缺某一个能力，不要机械选择完整组合。直接从左侧的 `01 基础功能` 或 `03 扩展功能` 中选择对应原子 Profile 即可。
+如果项目已经拥有自己的 UI、Settings、资源系统，只缺某一个能力，不要机械选择完整组合。直接选择对应原子 Profile；`HybridCLRKit` 在 General 的可选 Kit 中提供，不会被其他 Profile 自动引入。
 
 ## 单文件
 

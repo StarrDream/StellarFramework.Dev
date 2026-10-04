@@ -15,6 +15,12 @@ Adapter Profile：可选的 Kit 间、Unity 或第三方技术栈连接层
 
 `Runtime/Core` 只承载 Architecture。TimeKit、ResKit 等即使属于 Foundation，也继续放在 `Runtime/Kits`。
 
+## 发布仓归属与架构层级
+
+`StellarFramework` / `StellarFramework.Extensions` 表示代码由哪个使用者仓发布；`foundation` / `extension` / `adapter` 表示 Kit 在依赖图中的位置。两套分类互不等价。
+
+`HybridCLRKit`、它的 Editor 工具和 HotUpdate Publisher 随 General 主仓发布，用户可从 General 导出。它仍是架构层的 `extension / runtime-delivery`：只有选择代码热更时才需要 HybridCLR UPM 包和 ResKit，其他 Kit 不依赖它。Extensions 仓只发布 Algorithms、World 和 Flow。
+
 ## Catalog 元数据
 
 `KitDistributionCatalog.json` 的 `kind` 描述分发形式，不能表示架构层级。Runtime Kit Profile 使用独立字段：
@@ -70,13 +76,13 @@ Stable + Experimental -> Experimental
 - `reskit.complete`：完整 ResKit 开发配置，以 `reskit.tools` 为入口，包含 ResKit.Core、PoolKit、LogKit、Generated.AssetMap、ToolsHub 与资源审计/生成工具；具体 AssetBundle/Addressables/YooAsset 后端继续按项目选择。
 - `uiadaptation.complete`：独立 UI 适配生产配置，包含 UIAdaptationKit Runtime + ToolsHub Preview/Validator；只依赖 UGUI，不依赖 UIKit。
 - `uikit.complete`：完整 UIKit 生产配置，包含 UIKit Runtime/Tools、UIKit.ResKitAdapter、ResKit Complete，并组合独立 UIAdaptationKit；第三方资源后端仍按项目需要扩展。
-- `hotupdate.full`：完整热更新扩展，以 `reskit.yooasset + reskit.tools + hybridclrkit.tools` 为入口，自动得到 ResKit、YooAsset、HybridCLR、PoolKit、LogKit、ToolsHub、AssetsMap 与对应编辑器工具。
+- `hotupdate.full`：完整的内容与代码热更组合，以 `reskit.yooasset + reskit.tools + hybridclrkit.tools` 为入口，自动得到 ResKit、YooAsset、HybridCLRKit、PoolKit、LogKit、ToolsHub、AssetsMap 与对应编辑器工具。这个组合及其原子 Kit 随 General 发布，不要求项目使用 Extensions。
 
 Export 的用户导航与架构 tier 是两个独立维度：
 
 - `01 基础功能`：可按需单独选择的原子 Runtime Kit，只补齐真实硬依赖。
-- `02 完整功能`：经过验证的组合交付，例如 Localization / ResKit / UIKit Complete。
-- `03 扩展功能`：Adapter、Editor Tooling 等原子扩展，以及 Hot Update Full 这类组合扩展。
+- `02 完整功能`：经过验证的组合交付，例如 Localization / ResKit / UIKit Complete 和 Hot Update Full。
+- `03 扩展功能`：Adapter、Editor Tooling 等可选原子 Profile。该导航分类不代表它们来自 Extensions 仓。
 
 `foundation / extension / adapter` 继续作为内部架构依赖规则，不再直接承担用户导出分类。
 
@@ -85,7 +91,7 @@ Export 的用户导航与架构 tier 是两个独立维度：
 | 层级 | Kit / Profile |
 | --- | --- |
 | Foundation | LogKit、EventKit、PoolKit、SingletonKit、FSMKit、ActionKit、BindableKit、ConfigKit.Core、HttpKit、ResKit.Core、SettingsKit.Core、TimeKit、SaveKit.Core、GridKit、WorldKit.Core、SpatialKit、SimulationKit、PathKit、FlowKit.Core、PlacementKit.Core |
-| Extension | AudioKit.Core、RuntimeTools.Core、UIKit.Core、UIAdaptationKit.Core、HybridCLRKit、WorldGenKit.Core、WorldGenKit.Builtins、WorldGenKit.Authoring、WorldGenKit.Resources、WorldGenKit.Feature、WorldKit.Streaming |
+| Extension | AudioKit.Core、RuntimeTools.Core、UIKit.Core、UIAdaptationKit.Core、HybridCLRKit（General 发布）、WorldGenKit.Core、WorldGenKit.Builtins、WorldGenKit.Authoring、WorldGenKit.Resources、WorldGenKit.Feature、WorldKit.Streaming |
 | Adapter | ConfigKit.NewtonsoftJson、SettingsKit.UnityAdapters、SettingsKit.AudioKitAdapter、AudioKit.ResKitAdapter、ResKit.AssetBundle、ResKit.Addressables、ResKit.YooAsset、UIKit.ResKitAdapter、LocalizationKit.SettingsAdapter、LocalizationKit.UnityUGUIAdapter、LocalizationKit.TMPAdapter、SaveKit.NewtonsoftJson、PathKit.GridKitAdapter、FlowKit.UnityIntegration、Feature.ResourcesAdapter、Feature.PlacementAdapter、Feature.AuthoringAdapter、Feature.WorldKitAdapter、Feature.SaveKitAdapter、WorldGenKit.DebugTextureAdapter、WorldGenKit.MeshAdapter、WorldGenKit.TilemapAdapter、WorldGenKit.UnityTerrainAdapter、WorldGenKit.StreamingAdapter、WorldKit.Streaming.SaveKitAdapter、WorldKit.Streaming.UnityAdapter |
 
 这只是展示和依赖约束元数据，不会让 Foundation 自动安装。选择某个 Kit 时，导出器仍只按 `requiredProfileIds` 计算实际依赖闭包。
@@ -104,7 +110,7 @@ Adapter 横向连接可选能力
 
 - Foundation 不能依赖 Extension。
 - Extension 可以依赖 Foundation；Extension 间是否依赖必须由真实稳定的领域边界决定。
-- Adapter 用于可选集成，避免把 Addressables、HybridCLR、ResKit 等选择变成 Core Kit 的硬依赖。
+- Adapter 用于可选集成，避免把 Addressables、HybridCLR、ResKit 等选择变成 Foundation Kit 的硬依赖。HybridCLRKit 虽在 General 主仓提供，仍须由项目显式选择。
 - 不因“方便”把业务系统写入 Foundation。Crop、NPC、Quest、Farm 等先留在业务项目，经过真实项目验证后再决定是否升格为 Extension。
 
 ## RuntimeTools 的定位

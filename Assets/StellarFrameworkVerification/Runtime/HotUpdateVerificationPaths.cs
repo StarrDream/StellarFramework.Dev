@@ -11,7 +11,7 @@ namespace StellarFrameworkVerification.Runtime
     public static class HotUpdateVerificationPaths
     {
         public const string PackageName = "StellarHotUpdateVerification";
-        public const string PackageVersion = "1.0.0";
+        public const string PackageVersion = "1.0.1";
         public const int AndroidDefaultCdnPort = 18743;
 
         // Intent keys are duplicated by Tools/AndroidVerification and covered by policy tests.

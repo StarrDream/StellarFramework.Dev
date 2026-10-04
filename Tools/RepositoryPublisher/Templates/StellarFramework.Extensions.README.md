@@ -1,6 +1,6 @@
 # StellarFramework.Extensions
 
-为 StellarFramework 增加 Algorithms、World、Flow 和 HybridCLR HotUpdate 能力的源码仓。本仓只发布 Unity <code>Assets</code> 内容，不是独立 Unity 工程或 UPM 包。
+为 StellarFramework 增加 Algorithms、World 和 Flow 能力的源码仓。本仓只发布 Unity <code>Assets</code> 内容，不是独立 Unity 工程或 UPM 包。HybridCLR 代码热更 Kit 与 HotUpdate Publisher 位于匹配版本的 General 主仓。
 
 发布版本：{{RELEASE_VERSION}}
 
@@ -29,14 +29,6 @@
 | Algorithms | GridKit、SpatialKit、PathKit、SimulationKit 及相关 Adapter |
 | World | WorldKit、WorldGenKit、PlacementKit、Streaming、World Framework Tools |
 | Flow | FlowKit Core、Unity 集成、图编辑器与校验工具 |
-| HotUpdate | HybridCLRKit、构建工具和 HotUpdate Publisher |
-
-## HotUpdate
-
-本仓代码热更新流程由 HybridCLR 与 **YooAsset** 协作完成；Addressables 资源 Profile 不属于这条热更新路径。目标项目需要为相同平台和版本构建 Player、HybridCLR 产物、AOT Metadata、YooAsset Manifest 与内容包，并按发布门禁验证冷启动、缓存重启和回滚。
-
-Publisher 可使用本机目录或 S3 兼容发布目标。线上 endpoint、凭证、TLS 和权限由项目配置；上线前应在目标环境完成 Dry Run 和发布验证。操作步骤见 <code>Assets/StellarFramework/FrameworkDoc/02-Kits/HybridCLRKit</code>。
-
 ## 文档与版本
 
 各 Kit 的用法见 <code>Assets/StellarFramework/FrameworkDoc/02-Kits</code>；World Framework 文档见 <code>Assets/StellarFramework/FrameworkDoc/06-WorldFramework</code>。<code>RELEASE-MANIFEST.json</code> 记录源码提交、Profile、General 前置条件和精确 UPM 包规格。

@@ -1,6 +1,6 @@
 # StellarFramework.Extensions
 
-Source assets for the Algorithms, World, Flow, and HybridCLR HotUpdate capabilities in StellarFramework. This repository contains Unity <code>Assets</code> content; it is not a standalone Unity project or a UPM package.
+Source assets for the Algorithms, World, and Flow capabilities in StellarFramework. This repository contains Unity <code>Assets</code> content; it is not a standalone Unity project or a UPM package. The HybridCLR code hot-update Kit and HotUpdate Publisher are part of the matching General release.
 
 Release: {{RELEASE_VERSION}}
 
@@ -29,14 +29,6 @@ Confirm that the project contains the profiles listed in <code>requiredGeneralPr
 | Algorithms | GridKit, SpatialKit, PathKit, SimulationKit, and related adapters |
 | World | WorldKit, WorldGenKit, PlacementKit, Streaming, and World Framework tools |
 | Flow | FlowKit Core, Unity integration, graph editor, and validation tools |
-| HotUpdate | HybridCLRKit, build tools, and HotUpdate Publisher |
-
-## HotUpdate
-
-The code hot-update workflow combines HybridCLR with **YooAsset**. The Addressables resource profiles are separate and are not part of this hot-update path. A target project must build the Player, HybridCLR artifacts, AOT metadata, YooAsset manifest, and content for the same platform and release version. Run the release gates for cold start, cached restart, and rollback before shipping.
-
-The Publisher supports local-folder and S3-compatible targets. Production endpoints, credentials, TLS, and permissions are project-specific; run a Dry Run and release verification against the target environment before deployment. See <code>Assets/StellarFramework/FrameworkDoc/02-Kits/HybridCLRKit</code>.
-
 ## Guides and release contents
 
 Kit guides are under <code>Assets/StellarFramework/FrameworkDoc/02-Kits</code>; World Framework guides are under <code>Assets/StellarFramework/FrameworkDoc/06-WorldFramework</code>. <code>RELEASE-MANIFEST.json</code> records the source commit, profiles, required General profiles, and exact UPM specifications.

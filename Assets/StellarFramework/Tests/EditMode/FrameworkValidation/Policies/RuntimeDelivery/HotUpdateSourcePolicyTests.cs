@@ -7,12 +7,13 @@ namespace StellarFramework.Tests.FrameworkValidation
     public sealed class HotUpdateSourcePolicyTests
     {
         [Test]
-        public void HotUpdateMainPrintsHybridClrSuccessMessage()
+        public void TankArenaEntryDoesNotClaimThatLocalPreviewCompletedHotUpdate()
         {
             string source = File.ReadAllText(ToAbsoluteAssetPath(
                 "Assets/StellarFramework/Samples/TankArena/Runtime/HotUpdateMain.cs"));
 
-            Assert.That(source, Does.Contain("Hello HybridCLR , 热更成功 ;"));
+            Assert.That(source, Does.Not.Contain("Hello HybridCLR , 热更成功 ;"));
+            Assert.That(source, Does.Contain("[TankArena] Gameplay entry started."));
         }
 
         [Test]

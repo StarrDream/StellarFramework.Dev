@@ -2,7 +2,7 @@
 
 StellarFramework 的 Unity 开发工程，面向框架维护者。Runtime、Editor、Tools Hub、Kit Catalog、验证工具和发布脚本都在这里维护。General 与 Extensions 两个使用者仓由本仓生成。
 
-当前框架发布版本：**1.0.0**
+当前框架发布版本：**1.0.1**
 
 ## 环境要求
 
@@ -52,7 +52,7 @@ python Tools/RepositoryPublisher/publish_repositories.py --general-target C:\Git
 
 ## 使用者入口
 
-只想在项目中使用框架，请从 [StellarFramework General](https://github.com/StarrDream/StellarFramework) 开始。需要 Algorithms、World、Flow 或 HybridCLR 热更新时，再查看 [StellarFramework.Extensions](https://github.com/StarrDream/StellarFramework.Extensions)。用户文档位于 <code>Assets/StellarFramework/FrameworkDoc</code>。
+只想在项目中使用框架，请从 [StellarFramework General](https://github.com/StarrDream/StellarFramework) 开始。General 包含 HybridCLR 代码热更 Kit；需要 Algorithms、World 或 Flow 时，再添加 [StellarFramework.Extensions](https://github.com/StarrDream/StellarFramework.Extensions)。用户文档位于 <code>Assets/StellarFramework/FrameworkDoc</code>。
 
 ## 版本
 

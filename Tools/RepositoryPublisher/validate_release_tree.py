@@ -19,8 +19,12 @@ FORBIDDEN_GENERAL_ASSEMBLY_TOKENS = (
     "StellarFramework.WorldGenKit",
     "StellarFramework.PlacementKit",
     "StellarFramework.FlowKit",
-    "StellarFramework.HybridCLRKit",
     "StellarFramework.ToolsHub.WorldFramework",
+)
+
+FORBIDDEN_EXTENSIONS_ASSEMBLY_TOKENS = (
+    "StellarFramework.HybridCLRKit",
+    "StellarFramework.ToolsHub.HybridCLRKit",
     "StellarFramework.ToolsHub.HotUpdatePublisher",
 )
 
@@ -147,13 +151,23 @@ def validate_general(root: Path, source_commit: str | None) -> dict:
     dependency_specs = packages.get("dependencies") or {}
     dependencies = set(dependency_specs)
     required_upm = validate_required_upm(manifest)
+    profile_ids = set(manifest.get("profileIds") or [])
+    require({"hybridclrkit", "hybridclrkit.tools"}.issubset(profile_ids),
+            "General release must include HybridCLRKit and its Tools profile.")
+    require("com.code-philosophy.hybridclr" in required_upm,
+            "General release must declare the HybridCLR UPM dependency.")
     require(set(required_upm).issubset(dependencies),
             "General RELEASE-MANIFEST requiredUpm packages are missing from Packages/manifest.json.")
     require(all(dependency_specs.get(package_id) == spec for package_id, spec in required_upm.items()),
             "General RELEASE-MANIFEST requiredUpm specs differ from Packages/manifest.json.")
     require("com.besty.unity-skills" not in dependencies, "UnitySkills leaked into General Packages manifest.")
-    require("com.code-philosophy.hybridclr" not in dependencies,
-            "HybridCLR package leaked into General Packages manifest.")
+    for relative in (
+        "Assets/StellarFramework/Runtime/Kits/HybridCLRKit/StellarFramework.HybridCLRKit.asmdef",
+        "Assets/StellarFramework/Editor/StellarToolsHub/Modules/HybridCLRKit",
+        "Assets/StellarFramework/Editor/StellarToolsHub/Modules/HotUpdatePublisher",
+        "ProjectSettings/HybridCLRSettings.asset",
+    ):
+        require((root / relative).exists(), f"HybridCLR core release content missing from General: {relative}")
 
     assemblies = read_asmdefs(root)
     forbidden = sorted(
@@ -185,11 +199,22 @@ def validate_extensions(root: Path, source_commit: str | None) -> dict:
         "Assets/HotUpdatePublisherConsumerE2E",
     ):
         require(not (root / relative).exists(), f"Maintainer-only path leaked into Extensions: {relative}")
+    require("hotupdate" not in (manifest.get("domains") or []),
+            "HotUpdate must not be published as an Extensions domain.")
+    require(not ({"hybridclrkit", "hybridclrkit.tools"} & set(manifest.get("profileIds") or [])),
+            "HybridCLR profiles must not be published in Extensions.")
     assemblies = read_asmdefs(root)
     require(bool(assemblies), "Extensions contains no asmdefs.")
+    forbidden = sorted(
+        name for name in assemblies
+        if any(token in name for token in FORBIDDEN_EXTENSIONS_ASSEMBLY_TOKENS)
+    )
+    require(not forbidden, "HotUpdate assemblies leaked into Extensions: " + ", ".join(forbidden))
     asset_files, asset_dirs = validate_meta_completeness(root)
     required_upm = validate_required_upm(manifest)
     require(bool(required_upm), "Extensions release manifest must declare UPM dependencies.")
+    require("com.code-philosophy.hybridclr" not in required_upm,
+            "HybridCLR UPM dependency must not be declared by Extensions.")
     required_general = manifest.get("requiredGeneralProfileIds") or []
     require(bool(required_general), "Extensions manifest must declare General dependencies.")
     return {
