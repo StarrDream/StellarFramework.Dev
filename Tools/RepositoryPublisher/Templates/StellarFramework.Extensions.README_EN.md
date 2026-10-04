@@ -8,9 +8,17 @@ Source commit: [{{SOURCE_COMMIT}}](https://github.com/StarrDream/StellarFramewor
 
 ## Framework and extensions
 
-StellarFramework assembles game infrastructure from Kits. General provides shared Runtime services, Tools Hub, resource, localization, UI, and persistence capabilities. This repository adds Kits for the Algorithms, World, and Flow domains. Kit dependencies are declared in the catalog, so a project can export only the capabilities it uses.
+StellarFramework is layered as **Runtime foundation → feature Kits → adapters/providers → Unity or third-party implementations**. General supplies shared services and common Kits. Extensions reuses those capabilities through declared dependencies and can be exported selectively. Tools Hub handles configuration and export in the Editor; it is not part of the game Player.
 
 Extensions contains Unity `Assets` source for use with the matching General release. It is not a standalone Unity project. Start with the same-version General project and preserve `.meta` files when combining the source trees.
+
+| Domain | Main Kits and purpose |
+| --- | --- |
+| Algorithms | GridKit (grids and topology), SpatialKit (spatial queries), PathKit (pathfinding), SimulationKit (simulation primitives) |
+| World | WorldKit (world state), WorldGenKit (procedural generation), PlacementKit (placement rules), Streaming (chunk loading and save integration) |
+| Flow | FlowKit (flow data and execution), Unity integration, visual editor, and validation tools |
+
+Unity adapters, Editor tools, and dependencies are split into catalog Profiles so projects can export the combinations they need.
 
 ## Quick start: export extension Kits from General
 

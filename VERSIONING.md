@@ -1,6 +1,6 @@
 # Versioning
 
-StellarFramework Dev, General, and Extensions use one shared framework release version. The current release is **1.0.2**.
+StellarFramework Dev, General, and Extensions use one shared framework release version. The current release is **1.0.3**.
 
 ## Version rules
 
@@ -22,7 +22,7 @@ Unity/package dependency versions and serialization or manifest schema versions 
 
 ## 版本规则
 
-StellarFramework Dev、General 和 Extensions 三个仓库共用一个框架发布版本，当前版本为 **1.0.2**。
+StellarFramework Dev、General 和 Extensions 三个仓库共用一个框架发布版本，当前版本为 **1.0.3**。
 
 版本采用 `主版本.次版本.修订号` 格式：
 

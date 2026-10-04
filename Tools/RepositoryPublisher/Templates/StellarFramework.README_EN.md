@@ -13,9 +13,19 @@ Source commit: [{{SOURCE_COMMIT}}](https://github.com/StarrDream/StellarFramewor
 
 ## Framework overview
 
-StellarFramework divides common game infrastructure into Kits that can be exported and combined independently. Runtime Kits expose APIs to game code, adapters connect those APIs to concrete implementations, and Tools Hub provides setup, diagnostics, and export workflows. A project can include the capabilities it needs without importing the entire framework source tree.
+The framework is organized in layers: **Runtime foundation → feature Kits → adapters/providers → Unity or third-party implementations**. Game code calls Kit APIs, while adapters connect those APIs to selected backends. Tools Hub is an Editor tool for setup, configuration, diagnostics, and export; it is not a Player runtime dependency.
 
-ResKit provides a common entry point for resource operations. Resources, AssetBundle, Addressables (AA), and YooAsset are selectable loading backends. YooAsset content updates and HybridCLR code updates are separate ResKit extensions, so projects can select and combine them as needed. LocalizationKit, UIAdaptationKit, and UIKit can also be selected independently.
+ResKit provides the common entry point for resource operations. Resources, AssetBundle, Addressables (AA), and YooAsset are selectable loading adapters. YooAsset content updates and HybridCLR code updates are separate Providers, so projects can select and combine them independently.
+
+| Capability | Main Kits |
+| --- | --- |
+| Foundation and flow | LogKit, EventKit, TimeKit, PoolKit, SingletonKit, BindableKit, FSMKit, ActionKit |
+| Data and configuration | ConfigKit, SaveKit, SettingsKit |
+| Resources and updates | ResKit, Resources / AssetBundle / Addressables / YooAsset adapters, YooAsset content updates, HybridCLR code updates |
+| UI and presentation | UIKit, UIAdaptationKit, LocalizationKit, AudioKit |
+| Networking | HttpKit |
+
+The Kit Catalog in this repository defines optional components, dependencies, and individual export Profiles.
 
 This repository is also a complete Unity sample project. Run the case study first, then use the exporter to bring selected Kits into your own project.
 
