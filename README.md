@@ -2,7 +2,7 @@
 
 StellarFramework 的开发、验证和发布源仓。框架 Runtime、Editor 工具、Tools Hub、Kit Catalog、样例、测试及发布脚本都在这里维护。General 和 Extensions 使用者仓由本仓生成；不要在下游仓直接维护框架源码。
 
-当前发布版本：**1.0.1**。版本规则见 [VERSIONING.md](VERSIONING.md)。
+当前发布版本：**1.0.2**。版本规则见 [VERSIONING.md](VERSIONING.md)。
 
 ## 开发环境
 

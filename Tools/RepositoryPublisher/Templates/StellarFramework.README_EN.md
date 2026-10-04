@@ -11,14 +11,22 @@ Source commit: [{{SOURCE_COMMIT}}](https://github.com/StarrDream/StellarFramewor
 - Unity Editor **2022.3.62f3c1**
 - Unity Package Manager access on first open to resolve dependencies in `Packages/manifest.json`
 
-## Run Tank Arena
+## Framework overview
+
+StellarFramework divides common game infrastructure into Kits that can be exported and combined independently. Runtime Kits expose APIs to game code, adapters connect those APIs to concrete implementations, and Tools Hub provides setup, diagnostics, and export workflows. A project can include the capabilities it needs without importing the entire framework source tree.
+
+ResKit provides a common entry point for resource operations. Resources, AssetBundle, Addressables (AA), and YooAsset are selectable loading backends. YooAsset content updates and HybridCLR code updates are separate ResKit extensions, so projects can select and combine them as needed. LocalizationKit, UIAdaptationKit, and UIKit can also be selected independently.
+
+This repository is also a complete Unity sample project. Run the case study first, then use the exporter to bring selected Kits into your own project.
+
+## Quick start
 
 1. Clone this repository, or download and extract its GitHub ZIP.
 2. Add the repository directory in Unity Hub and open the project. Wait for asset import and package resolution to finish.
 3. Open `Assets/StellarFramework/Samples/TankArena/Scene/FrameworkDemo.unity`, wait for script compilation, and press Play.
 4. On a touch screen, use the left stick to move and the right stick to aim. On desktop, use WASD, the mouse, and Space.
 
-Tank Arena is a playable framework case study with enemy waves, repairs, pause and results screens, localization, local saves, and screen adaptation. Its SYSTEMS panel reports the Kits used by the sample. See `Assets/StellarFramework/Samples/TankArena/CaseStudy.md` for the gameplay flow, Kit responsibilities, and asset locations.
+Tank Arena is a playable framework case study with enemy waves, repairs, pause and results screens, localization, local saves, and screen adaptation. Its SYSTEMS panel reports the Kits used by the sample. See `Assets/StellarFramework/Samples/TankArena/CaseStudy.md` for the gameplay flow, Kit responsibilities, and asset locations. To add individual capabilities to another project, continue with “Export Kits to your project” below.
 
 The Editor preview runs the locally compiled sample assembly. It does not download remote hot-update content or exercise the publishing workflow.
 

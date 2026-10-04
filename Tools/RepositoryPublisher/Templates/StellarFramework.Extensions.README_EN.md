@@ -6,9 +6,15 @@ Release: **{{RELEASE_VERSION}}**
 
 Source commit: [{{SOURCE_COMMIT}}](https://github.com/StarrDream/StellarFramework.Dev/commit/{{SOURCE_COMMIT}})
 
-## Recommended: export the Kits you need from General
+## Framework and extensions
 
-Use this workflow when a game project needs only selected extension capabilities:
+StellarFramework assembles game infrastructure from Kits. General provides shared Runtime services, Tools Hub, resource, localization, UI, and persistence capabilities. This repository adds Kits for the Algorithms, World, and Flow domains. Kit dependencies are declared in the catalog, so a project can export only the capabilities it uses.
+
+Extensions contains Unity `Assets` source for use with the matching General release. It is not a standalone Unity project. Start with the same-version General project and preserve `.meta` files when combining the source trees.
+
+## Quick start: export extension Kits from General
+
+Use this workflow to add selected extension capabilities to a game project:
 
 1. Download the matching General release, open it with Unity 2022.3.62f3c1, and wait for package resolution.
 2. Merge this repository's `Assets` content into the General project's `Assets` directory. Preserve all `.meta` files.

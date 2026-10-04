@@ -75,7 +75,10 @@ class GeneralManifestDependencyTests(unittest.TestCase):
 
             self.assertIn("README_EN.md", final_files)
             self.assertTrue(generated_readme.is_file())
-            self.assertIn("Release: **1.0.1**", generated_readme.read_text(encoding="utf-8"))
+            release_version = PUBLISHER.load_json(
+                PROJECT_ROOT / PUBLISHER.REPOSITORY_CATALOG
+            )["releaseVersion"]
+            self.assertIn(f"Release: **{release_version}**", generated_readme.read_text(encoding="utf-8"))
             self.assertIn("test-source-commit", generated_readme.read_text(encoding="utf-8"))
 
 

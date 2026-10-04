@@ -6,9 +6,15 @@ Algorithms、World 和 Flow 的 StellarFramework 扩展 Kit 源码仓。本仓�
 
 源码提交：[{{SOURCE_COMMIT}}](https://github.com/StarrDream/StellarFramework.Dev/commit/{{SOURCE_COMMIT}})
 
-## 推荐用法：从 General 导出需要的 Kit
+## 框架与扩展概览
 
-这种方式适合只把部分扩展能力加入游戏项目：
+StellarFramework 通过 Kit 组合游戏基础能力。General 提供通用 Runtime、Tools Hub、资源、本地化、UI 和存档等能力；本仓库在此基础上增加 Algorithms、World 和 Flow 领域的扩展 Kit。每个 Kit 按依赖声明组合，使用者可以只导出项目需要的部分。
+
+Extensions 发布的是与对应版本 General 配套的 Unity `Assets` 源码，不是独立工程。第一次使用前，请准备与本仓版本一致的 General，并保留合并文件的 `.meta`。
+
+## 快速开始：从 General 导出扩展 Kit
+
+这是把少量扩展能力加入现有游戏项目的推荐路径：
 
 1. 下载与本仓版本一致的 General，使用 Unity 2022.3.62f3c1 打开并等待依赖解析完成。
 2. 将本仓的 `Assets` 内容合并到 General 工程的 `Assets` 目录，保留所有 `.meta` 文件。

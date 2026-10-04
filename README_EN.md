@@ -2,7 +2,7 @@
 
 The Unity development project for StellarFramework maintainers. Runtime, Editor, Tools Hub, the Kit catalog, validation tools, and release scripts are maintained here. The General and Extensions user repositories are generated from this source.
 
-Current framework release: **1.0.1**
+Current framework release: **1.0.2**
 
 ## Requirements
 
