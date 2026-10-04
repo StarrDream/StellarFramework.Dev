@@ -11,7 +11,7 @@
 - `ResKit`
 - `UIKit`
 - `HttpKit`
-- `HybridCLRKit`
+- `ResKit.CodeUpdate.HybridCLR`
 - `ActionKit`
 - `ConfigKit`
 
@@ -34,7 +34,7 @@ UniTask Usage
   `InitAsync()`、`OpenAsync<T>()`、`PreloadAsync<T>()`
 - `HttpKit`
   `GetAsync / PostAsync / DownloadFileAsync`
-- `HybridCLRKit`
+- `ResKit.CodeUpdate.HybridCLR`
   `RunAsync(...)`、Manifest / DLL / metadata 的启动期异步读取
 - `ActionKit`
   动作链等待与异步动作执行

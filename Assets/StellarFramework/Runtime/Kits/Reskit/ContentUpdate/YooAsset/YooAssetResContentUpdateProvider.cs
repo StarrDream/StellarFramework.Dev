@@ -18,7 +18,6 @@ namespace StellarFramework.Res
         UpdatingManifest,
         CreatingDownloader,
         Downloading,
-        InstallingResKit,
         Completed,
         Failed
     }
@@ -37,7 +36,6 @@ namespace StellarFramework.Res
         EmptyPackageVersion,
         ManifestUpdateFailed,
         DownloadFailed,
-        ResKitInstallFailed,
         Unexpected
     }
 
@@ -99,7 +97,9 @@ namespace StellarFramework.Res
     /// </summary>
     public sealed class YooAssetContentUpdateOptions
     {
-        public string PackageName = YooAssetResKitInstaller.DefaultPackageName;
+        public const string DefaultPackageName = "DefaultPackage";
+
+        public string PackageName = DefaultPackageName;
         public string MainHostServer;
         public string FallbackHostServer;
         public string BuildinPackageRoot;
@@ -110,7 +110,6 @@ namespace StellarFramework.Res
         public int FailedTryAgain = 3;
         public long ResumeDownloadMinimumSize = 1024L * 1024L;
         public bool AppendTimeTicks = true;
-        public bool InstallResKitOnSuccess = true;
         public IYooAssetContentUpdateRetryPolicy RetryPolicy = YooAssetContentUpdateRetryPolicy.Default;
 
         /// <summary>
@@ -188,17 +187,36 @@ namespace StellarFramework.Res
         }
     }
 
+    /// <summary>YooAsset HostPlayMode content-update provider registered through ResKit.</summary>
+    public sealed class YooAssetResContentUpdateProvider :
+        IResContentUpdateProvider<
+            YooAssetContentUpdateOptions,
+            YooAssetContentUpdateProgress,
+            YooAssetContentUpdateResult>
+    {
+        public const string ProviderId = "YooAsset.HostPlayMode";
+
+        public UniTask<YooAssetContentUpdateResult> UpdateAsync(
+            YooAssetContentUpdateOptions options,
+            IProgress<YooAssetContentUpdateProgress> progress = null,
+            CancellationToken cancellationToken = default)
+        {
+            return YooAssetContentUpdateRuntime.UpdateAsync(options, progress, cancellationToken);
+        }
+    }
+
     /// <summary>
-    /// 一个很薄的 YooAsset HostPlayMode 启动更新辅助器。
+    /// YooAsset HostPlayMode content-update implementation behind the ResKit provider boundary.
     /// </summary>
     /// <remarks>
-    /// 固定流程：Initialize -> RequestVersion -> Unload -> UpdateManifest -> Download -> Install ResKit。
+    /// 固定流程：Initialize -> RequestVersion -> Unload -> UpdateManifest -> Download。
     /// 断点续传完全使用 YooAsset DefaultCacheFileSystem 官方实现：临时文件保留 + HTTP Range。
-    /// 本类不引用 HybridCLRKit；内容更新成功后，项目可独立调用 HybridCLRKit.RunAsync()。
+    /// 本实现不注册 ResKit Loader；应用通过 YooAssetContentUpdateInstaller.Install() 注册内容更新 Provider。
+    /// 内容更新成功后，应用使用自己创建的 ResScope 调用所选代码更新 Provider。
     /// </remarks>
-    public static class YooAssetContentUpdater
+    internal static class YooAssetContentUpdateRuntime
     {
-        public static async UniTask<YooAssetContentUpdateResult> UpdateHostPackageAsync(
+        internal static async UniTask<YooAssetContentUpdateResult> UpdateAsync(
             YooAssetContentUpdateOptions options,
             IProgress<YooAssetContentUpdateProgress> progress = null,
             CancellationToken cancellationToken = default)
@@ -278,7 +296,7 @@ namespace StellarFramework.Res
                     versionAttempt++;
                     Report(progress, currentStage, 0.1f, versionAttempt);
                     RequestPackageVersionOperation versionOperation = package.RequestPackageVersionAsync(
-                        options.AppendTimeTicks,
+                        options.AppendTimeTicks && !IsLocalFileHost(options.MainHostServer),
                         ClampPositive(options.OperationTimeoutSeconds));
                     await AwaitOperationAsync(versionOperation, cancellationToken);
                     if (versionOperation.Status == EOperationStatus.Succeed)
@@ -398,27 +416,6 @@ namespace StellarFramework.Res
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
-                currentStage = YooAssetContentUpdateStage.InstallingResKit;
-                Report(progress, currentStage, 0.97f);
-                if (options.InstallResKitOnSuccess)
-                {
-                    try
-                    {
-                        YooAssetResKitInstaller.Install(packageName);
-                    }
-                    catch (Exception ex)
-                    {
-                        return Fail(
-                            packageName,
-                            packageVersion,
-                            YooAssetContentUpdateErrorCode.ResKitInstallFailed,
-                            currentStage,
-                            "Install YooAsset backend into ResKit failed: " + ex.Message,
-                            retryCount,
-                            downloader);
-                    }
-                }
-
                 currentStage = YooAssetContentUpdateStage.Completed;
                 Report(progress, YooAssetContentUpdateStage.Completed, 1f);
                 return new YooAssetContentUpdateResult(
@@ -467,12 +464,18 @@ namespace StellarFramework.Res
             FileSystemParameters parameters,
             YooAssetContentUpdateOptions options)
         {
+            // Direct file:// reads are intended for local Development iteration. They have no
+            // HTTP Range support, so keep downloads whole instead of persisting partial files
+            // that cannot be resumed through the file transport.
+            long resumeMinimumSize = IsLocalFileHost(options.MainHostServer)
+                ? long.MaxValue
+                : Math.Max(0L, options.ResumeDownloadMinimumSize);
             parameters.AddParameter(
                 FileSystemParametersDefine.DOWNLOAD_WATCH_DOG_TIME,
                 ClampPositive(options.DownloadWatchDogSeconds));
             parameters.AddParameter(
                 FileSystemParametersDefine.RESUME_DOWNLOAD_MINMUM_SIZE,
-                Math.Max(0L, options.ResumeDownloadMinimumSize));
+                resumeMinimumSize);
 
             if (options.ResumeDownloadResponseCodes != null)
             {
@@ -480,6 +483,12 @@ namespace StellarFramework.Res
                     FileSystemParametersDefine.RESUME_DOWNLOAD_RESPONSE_CODES,
                     new List<long>(options.ResumeDownloadResponseCodes));
             }
+        }
+
+        private static bool IsLocalFileHost(string value)
+        {
+            return Uri.TryCreate(value, UriKind.Absolute, out Uri uri) &&
+                   uri.IsFile && !uri.IsUnc && string.IsNullOrEmpty(uri.Host);
         }
 
         private static bool TryValidateOptions(

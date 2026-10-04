@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using NUnit.Framework;
 using StellarFramework.Editor.HotUpdatePublisher;
-using StellarFramework.HybridCLR;
+using StellarFramework.Res.CodeUpdate.HybridCLR;
 using UnityEditor;
 using UnityEngine;
 

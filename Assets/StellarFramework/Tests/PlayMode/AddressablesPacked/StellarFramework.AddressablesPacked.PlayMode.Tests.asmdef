@@ -2,7 +2,7 @@
   "name": "StellarFramework.AddressablesPacked.PlayMode.Tests",
   "rootNamespace": "StellarFramework.Tests.PlayMode",
   "references": [
-    "StellarFramework.HybridCLRKit",
+    "StellarFramework.ResKit.CodeUpdate.HybridCLR",
     "StellarFramework.ResKit",
     "StellarFramework.ResKit.Addressables",
     "StellarFramework.SingletonKit",

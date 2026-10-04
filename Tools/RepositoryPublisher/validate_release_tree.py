@@ -23,8 +23,8 @@ FORBIDDEN_GENERAL_ASSEMBLY_TOKENS = (
 )
 
 FORBIDDEN_EXTENSIONS_ASSEMBLY_TOKENS = (
-    "StellarFramework.HybridCLRKit",
-    "StellarFramework.ToolsHub.HybridCLRKit",
+    "StellarFramework.ResKit.CodeUpdate.HybridCLR",
+    "StellarFramework.ToolsHub.ResKit.CodeUpdate.HybridCLR",
     "StellarFramework.ToolsHub.HotUpdatePublisher",
 )
 
@@ -152,8 +152,8 @@ def validate_general(root: Path, source_commit: str | None) -> dict:
     dependencies = set(dependency_specs)
     required_upm = validate_required_upm(manifest)
     profile_ids = set(manifest.get("profileIds") or [])
-    require({"hybridclrkit", "hybridclrkit.tools"}.issubset(profile_ids),
-            "General release must include HybridCLRKit and its Tools profile.")
+    require({"reskit.codeupdate.hybridclr", "reskit.codeupdate.hybridclr.tools"}.issubset(profile_ids),
+            "General release must include the ResKit HybridCLR code-update provider and its Tools profile.")
     require("com.code-philosophy.hybridclr" in required_upm,
             "General release must declare the HybridCLR UPM dependency.")
     require(set(required_upm).issubset(dependencies),
@@ -162,8 +162,8 @@ def validate_general(root: Path, source_commit: str | None) -> dict:
             "General RELEASE-MANIFEST requiredUpm specs differ from Packages/manifest.json.")
     require("com.besty.unity-skills" not in dependencies, "UnitySkills leaked into General Packages manifest.")
     for relative in (
-        "Assets/StellarFramework/Runtime/Kits/HybridCLRKit/StellarFramework.HybridCLRKit.asmdef",
-        "Assets/StellarFramework/Editor/StellarToolsHub/Modules/HybridCLRKit",
+        "Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR/StellarFramework.ResKit.CodeUpdate.HybridCLR.asmdef",
+        "Assets/StellarFramework/Editor/StellarToolsHub/Modules/ResKit/CodeUpdate/HybridCLR",
         "Assets/StellarFramework/Editor/StellarToolsHub/Modules/HotUpdatePublisher",
         "ProjectSettings/HybridCLRSettings.asset",
     ):

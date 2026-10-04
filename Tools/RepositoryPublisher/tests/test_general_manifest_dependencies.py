@@ -27,14 +27,20 @@ class GeneralManifestDependencyTests(unittest.TestCase):
         cls.manifest = PUBLISHER.build_general_manifest(PROJECT_ROOT, cls.base, plan)
         cls.profiles = {str(item["id"]): item for item in cls.base["profiles"]}
 
-    def test_resource_adapters_declare_their_nunit_package_dependency(self) -> None:
-        for profile_id in ("reskit.addressables", "reskit.yooasset"):
+    def test_resource_adapters_do_not_pull_test_runner_into_runtime_projects(self) -> None:
+        for profile_id in (
+            "reskit.resources",
+            "reskit.assetbundle",
+            "reskit.addressables",
+            "reskit.yooasset",
+            "reskit.contentupdate.yooasset",
+        ):
             with self.subTest(profile_id=profile_id):
-                self.assertIn("com.unity.test-framework", self.profiles[profile_id]["requiredUpm"])
+                self.assertNotIn("com.unity.test-framework", self.profiles[profile_id]["requiredUpm"])
 
-    def test_general_manifest_includes_hybridclr_for_the_core_release(self) -> None:
+    def test_general_manifest_includes_hybridclr_without_test_runner_dependency(self) -> None:
         dependencies = self.manifest["dependencies"]
-        self.assertEqual(dependencies.get("com.unity.test-framework"), "1.1.33")
+        self.assertNotIn("com.unity.test-framework", dependencies)
         self.assertEqual(
             dependencies.get("com.code-philosophy.hybridclr"),
             "https://github.com/focus-creative-games/hybridclr_unity.git#4feac30cb2e105992986c737f7f54992b8300e1a",
@@ -69,7 +75,7 @@ class GeneralManifestDependencyTests(unittest.TestCase):
 
             self.assertIn("README_EN.md", final_files)
             self.assertTrue(generated_readme.is_file())
-            self.assertIn("Release: 1.0.1", generated_readme.read_text(encoding="utf-8"))
+            self.assertIn("Release: **1.0.1**", generated_readme.read_text(encoding="utf-8"))
             self.assertIn("test-source-commit", generated_readme.read_text(encoding="utf-8"))
 
 

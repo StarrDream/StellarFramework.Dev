@@ -423,7 +423,7 @@ namespace StellarFramework.Editor.Modules
 
         private static object LoadHotUpdateSettingsAsset(out Type settingsType)
         {
-            settingsType = Type.GetType("StellarFramework.HybridCLR.HotUpdateSettings, StellarFramework.HybridCLRKit");
+            settingsType = Type.GetType("StellarFramework.Res.CodeUpdate.HybridCLR.HotUpdateSettings, StellarFramework.ResKit.CodeUpdate.HybridCLR");
             if (settingsType == null)
             {
                 return null;
@@ -606,7 +606,7 @@ namespace StellarFramework.Editor.Modules
     }
 
     [StellarTool("HybridCLR DLL 导出", "热更新", -20,
-        RequiredAssemblyNames = new[] { "StellarFramework.HybridCLRKit", "HybridCLR.Editor" })]
+        RequiredAssemblyNames = new[] { "StellarFramework.ResKit.CodeUpdate.HybridCLR", "HybridCLR.Editor" })]
     public sealed class HybridCLRHotUpdateExporterHubModule : ToolModule
     {
         private bool _copyAllWhenSettingsEmpty = true;

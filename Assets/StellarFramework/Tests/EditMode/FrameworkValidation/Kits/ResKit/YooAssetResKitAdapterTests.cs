@@ -8,13 +8,13 @@ namespace StellarFramework.Tests.FrameworkValidation
         [TearDown]
         public void TearDown()
         {
-            YooAssetResKitInstaller.Uninstall();
+            YooAssetResKitInstaller.UninstallLoader();
         }
 
         [Test]
-        public void InstallRegistersYooAssetLoaderForDefaultPackage()
+        public void InstallLoaderRegistersYooAssetLoaderForDefaultPackage()
         {
-            YooAssetResKitInstaller.Install();
+            YooAssetResKitInstaller.InstallLoader();
 
             using (ResScope scope =
                    ResKit.CreateCustomScope(YooAssetResKitInstaller.LoaderKey, "DefaultPackageTest"))
@@ -30,7 +30,7 @@ namespace StellarFramework.Tests.FrameworkValidation
         [Test]
         public void InstallCanBindCustomPackageName()
         {
-            YooAssetResKitInstaller.Install("Gameplay");
+            YooAssetResKitInstaller.InstallLoader("Gameplay");
 
             using (ResScope scope =
                    ResKit.CreateCustomScope(YooAssetResKitInstaller.LoaderKey, "GameplayTest"))
@@ -44,12 +44,12 @@ namespace StellarFramework.Tests.FrameworkValidation
         [Test]
         public void DifferentPackagesUseDifferentSharedCacheNamespaces()
         {
-            YooAssetResKitInstaller.Install("PackageA");
+            YooAssetResKitInstaller.InstallLoader("PackageA");
             using ResScope packageA =
                 ResKit.CreateCustomScope(YooAssetResKitInstaller.LoaderKey, "A");
             string loaderA = packageA.Loader is YooAssetLoader a ? a.LoaderName : string.Empty;
 
-            YooAssetResKitInstaller.Install("PackageB");
+            YooAssetResKitInstaller.InstallLoader("PackageB");
             using ResScope packageB =
                 ResKit.CreateCustomScope(YooAssetResKitInstaller.LoaderKey, "B");
             string loaderB = packageB.Loader is YooAssetLoader b ? b.LoaderName : string.Empty;

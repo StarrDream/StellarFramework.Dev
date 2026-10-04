@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using StellarFramework.HybridCLR;
+using StellarFramework.Res.CodeUpdate.HybridCLR;
 
 namespace StellarFramework.Tests.FrameworkValidation
 {
@@ -46,12 +46,13 @@ namespace StellarFramework.Tests.FrameworkValidation
         public void DefaultSettingsUseResKitManifestAssetInsteadOfNetworkFallbacks()
         {
             HotUpdateSettings settings = HotUpdateSettings.LoadOrCreateDefault();
-            HotUpdateSettingsValidationReport report = settings.Validate(strictProduction: true);
+            HotUpdateSettingsValidationReport report = settings.Validate();
 
             Assert.That(report.IsValid, Is.True, string.Join(" | ", report.Errors));
-            Assert.That(settings.ResourceLoaderKey, Is.EqualTo("YooAsset"));
             Assert.That(settings.HotUpdateManifestKey,
                 Is.EqualTo("Assets/GameHotUpdate/Manifest/HotUpdateManifest.json"));
+            Assert.That(settings.HotUpdateAssemblyKey,
+                Is.EqualTo("Assets/GameHotUpdate/Code/HotUpdate.dll.bytes"));
         }
 
         [Test]

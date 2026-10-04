@@ -196,7 +196,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             string assetBundleSource = ReadAssetText("Assets/StellarFramework/Editor/StellarToolsHub/Modules/AssetBundle/AssetBundleToolModule.cs");
             string addressablesSource = ReadAssetText("Assets/StellarFramework/Editor/StellarToolsHub/Modules/Addressables/AddressablesBuildToolModule.cs");
             string resKitSource = ReadAssetText("Assets/StellarFramework/Editor/StellarToolsHub/Modules/ResKit/ResKitAuditHubModule.cs");
-            string hybridClrSource = ReadAssetText("Assets/StellarFramework/Editor/StellarToolsHub/Modules/HybridCLRKit/HybridCLRHotUpdateAssetExporter.cs");
+            string hybridClrSource = ReadAssetText("Assets/StellarFramework/Editor/StellarToolsHub/Modules/ResKit/CodeUpdate/HybridCLR/HybridCLRHotUpdateAssetExporter.cs");
 
             Assert.That(assetBundleSource, Does.Contain("[StellarTool(\"资源打包 (AssetBundle)\", \"资源管理\""));
             Assert.That(addressablesSource, Does.Contain("[StellarTool(\"Addressables\", \"资源管理\""));
@@ -238,7 +238,7 @@ namespace StellarFramework.Tests.FrameworkValidation
         public void SourceGuideCoversMainSourceReadingRoutes()
         {
             string source = ReadAssetText("Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/ResKit-统一资源-源码文档-Guide.md")
-                + ReadAssetText("Assets/StellarFramework/FrameworkDoc/02-Kits/HybridCLRKit/HybridCLRKit-代码热更新-源码文档-Guide.md")
+                + ReadAssetText("Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/CodeUpdate/HybridCLR/ResKit-CodeUpdate-HybridCLR-源码文档-Guide.md")
                 + ReadAssetText("Assets/StellarFramework/FrameworkDoc/02-Kits/UIKit/UIKit-界面系统-源码文档-Guide.md")
                 + ReadAssetText("Assets/StellarFramework/FrameworkDoc/02-Kits/SettingsKit/SettingsKit-设置系统-源码文档-Guide.md")
                 + ReadAssetText("Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构源码文档-Guide.md")
@@ -249,7 +249,8 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(source, Does.Contain("IResLoader"));
             Assert.That(source, Does.Contain("ResLoader"));
             Assert.That(source, Does.Contain("AddressablesResKitInstaller"));
-            Assert.That(source, Does.Contain("HybridCLRKit"));
+            Assert.That(source, Does.Contain("IResCodeUpdateProvider"));
+            Assert.That(source, Does.Contain("ResKit.CodeUpdate.HybridCLR"));
             Assert.That(source, Does.Contain("HotUpdateManifest"));
             Assert.That(source, Does.Contain("UIKit"));
             Assert.That(source, Does.Contain("SettingsKit"));
@@ -268,7 +269,7 @@ namespace StellarFramework.Tests.FrameworkValidation
                 "Assets/StellarFramework/FrameworkDoc/02-Kits/ConfigKit/ConfigKit-配置系统-源码文档-Guide.md",
                 "Assets/StellarFramework/FrameworkDoc/02-Kits/EventKit/EventKit-事件系统-源码文档-Guide.md",
                 "Assets/StellarFramework/FrameworkDoc/02-Kits/FSMKit/FSMKit-状态机-源码文档-Guide.md",
-                "Assets/StellarFramework/FrameworkDoc/02-Kits/HybridCLRKit/HybridCLRKit-代码热更新-源码文档-Guide.md",
+                "Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/CodeUpdate/HybridCLR/ResKit-CodeUpdate-HybridCLR-源码文档-Guide.md",
                 "Assets/StellarFramework/FrameworkDoc/02-Kits/HttpKit/HttpKit-网络请求-源码文档-Guide.md",
                 "Assets/StellarFramework/FrameworkDoc/02-Kits/LogKit/LogKit-PerformanceKit-源码文档-Guide.md",
                 "Assets/StellarFramework/FrameworkDoc/02-Kits/PoolKit/PoolKit-对象池-源码文档-Guide.md",
@@ -334,8 +335,8 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/02-Kits/EventKit/EventKit-事件系统-源码文档-Guide.md")), Is.True);
             Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/02-Kits/FSMKit/FSMKit-状态机-说明文档-Guide.md")), Is.True);
             Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/02-Kits/FSMKit/FSMKit-状态机-源码文档-Guide.md")), Is.True);
-            Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/02-Kits/HybridCLRKit/HybridCLRKit-代码热更新-说明文档-Guide.md")), Is.True);
-            Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/02-Kits/HybridCLRKit/HybridCLRKit-代码热更新-源码文档-Guide.md")), Is.True);
+            Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/CodeUpdate/HybridCLR/ResKit-CodeUpdate-HybridCLR-说明文档-Guide.md")), Is.True);
+            Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/CodeUpdate/HybridCLR/ResKit-CodeUpdate-HybridCLR-源码文档-Guide.md")), Is.True);
             Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/02-Kits/HttpKit/HttpKit-网络请求-说明文档-Guide.md")), Is.True);
             Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/02-Kits/HttpKit/HttpKit-网络请求-源码文档-Guide.md")), Is.True);
             Assert.That(File.Exists(ToAbsoluteAssetPath("Assets/StellarFramework/FrameworkDoc/02-Kits/LogKit/LogKit-PerformanceKit-说明文档-Guide.md")), Is.True);

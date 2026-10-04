@@ -8,7 +8,7 @@ namespace StellarFramework.Tests.FrameworkValidation.Policies.HotUpdatePublisher
     public sealed class HotUpdateContentConventionTests
     {
         private const string GuidePath =
-            "Assets/StellarFramework/FrameworkDoc/02-Kits/HybridCLRKit/HotUpdate-开发规范-Guide.md";
+            "Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/CodeUpdate/HybridCLR/HotUpdate-开发规范-Guide.md";
 
         [Test]
         public void NewProjectRootsMatchDocumentedConvention()
@@ -105,7 +105,7 @@ namespace StellarFramework.Tests.FrameworkValidation.Policies.HotUpdatePublisher
         [Test]
         public void GuideDocumentsBoundariesMigrationAndRiskLevels()
         {
-            string absolutePath = Path.Combine(Application.dataPath, "StellarFramework/FrameworkDoc/02-Kits/HybridCLRKit/HotUpdate-开发规范-Guide.md");
+            string absolutePath = Path.Combine(Application.dataPath, "StellarFramework/FrameworkDoc/02-Kits/Reskit/CodeUpdate/HybridCLR/HotUpdate-开发规范-Guide.md");
             Assert.That(File.Exists(absolutePath), Is.True, "The HotUpdate development convention guide must exist.");
 
             string guide = File.ReadAllText(absolutePath);

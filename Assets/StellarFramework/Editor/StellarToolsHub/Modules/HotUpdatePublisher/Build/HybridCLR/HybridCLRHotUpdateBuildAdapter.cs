@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using StellarFramework.Editor.Modules;
-using StellarFramework.HybridCLR;
+using StellarFramework.Res.CodeUpdate.HybridCLR;
 using UnityEditor;
 using UnityEngine;
 using HybridCLR.Editor.Commands;

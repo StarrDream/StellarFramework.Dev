@@ -37,7 +37,7 @@ await UniTask.Delay(1000, cancellationToken: destroyCancellationToken);
   异步打开面板
 - `HttpKit`
   网络请求
-- `HybridCLRKit`
+- `ResKit.CodeUpdate.HybridCLR`
   启动期代码热更新流程
 - `ActionKit`
   等待动作链和插值流程

@@ -3,7 +3,7 @@ using System.Reflection;
 using NUnit.Framework;
 using StellarFramework.Editor;
 using StellarFramework.Generated;
-using StellarFramework.HybridCLR;
+using StellarFramework.Res.CodeUpdate.HybridCLR;
 using StellarFramework.Res;
 using UnityEngine;
 

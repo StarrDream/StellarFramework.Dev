@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
-using StellarFramework.HybridCLR;
+using StellarFramework.Res.CodeUpdate.HybridCLR;
 using StellarFramework.Res;
 using UnityEngine;
 using YooAsset;
@@ -82,7 +82,7 @@ namespace StellarFrameworkVerification.Runtime
             "[StellarHotUpdateVerificationStage] ";
 
         private const string AndroidHotUpdateEntryLogMarker =
-            "Hello HybridCLR , 热更成功 ;";
+            "[TankArena] Gameplay entry started.";
 
         internal static void LogAndroidStage(string stage)
         {
@@ -95,15 +95,34 @@ namespace StellarFrameworkVerification.Runtime
             HotUpdateVerificationConfig config,
             CancellationToken cancellationToken = default)
         {
-            var result = new HotUpdateVerificationResult();
+            var result = new HotUpdateVerificationResult
+            {
+                status = "RUNNING",
+                platform = Application.platform.ToString(),
+                runMode = "range-resume",
+                cacheRoot = config?.cacheRoot
+            };
             RangeHttpServer server = null;
 
             try
             {
                 ValidateConfig(config);
                 DeleteDirectorySafe(config.cacheRoot);
+                result.cacheFileCountBeforeUpdate = CountFilesIfDirectoryExists(config.cacheRoot);
                 await CleanupPackageAsync(config.packageName);
-                YooAssetResKitInstaller.Uninstall();
+                YooAssetContentUpdateInstaller.Uninstall();
+                YooAssetResKitInstaller.UninstallLoader();
+
+                YooAssetResKitInstaller.InstallLoader(config.packageName);
+                YooAssetContentUpdateInstaller.Install();
+                IResContentUpdateProvider<
+                    YooAssetContentUpdateOptions,
+                    YooAssetContentUpdateProgress,
+                    YooAssetContentUpdateResult> contentUpdater =
+                    ResKit.GetContentUpdateProvider<
+                        YooAssetContentUpdateOptions,
+                        YooAssetContentUpdateProgress,
+                        YooAssetContentUpdateResult>(YooAssetResContentUpdateProvider.ProviderId);
 
                 FileInfo largeBundle = new DirectoryInfo(config.packageDirectory)
                     .GetFiles("*.bundle", SearchOption.TopDirectoryOnly)
@@ -126,7 +145,7 @@ namespace StellarFrameworkVerification.Runtime
 
                 YooAssetContentUpdateOptions firstOptions = CreateOptions(config, server.BaseUrl);
                 firstOptions.FailedTryAgain = 0;
-                YooAssetContentUpdateResult first = await YooAssetContentUpdater.UpdateHostPackageAsync(
+                YooAssetContentUpdateResult first = await contentUpdater.UpdateAsync(
                     firstOptions,
                     cancellationToken: cancellationToken);
 
@@ -151,7 +170,7 @@ namespace StellarFrameworkVerification.Runtime
                 await CleanupPackageAsync(config.packageName);
                 server.AllowCompleteResponses();
 
-                YooAssetContentUpdateResult second = await YooAssetContentUpdater.UpdateHostPackageAsync(
+                YooAssetContentUpdateResult second = await contentUpdater.UpdateAsync(
                     CreateOptions(config, server.BaseUrl),
                     cancellationToken: cancellationToken);
                 if (!second.Success)
@@ -159,6 +178,10 @@ namespace StellarFrameworkVerification.Runtime
                     throw new InvalidOperationException("Resumed content update failed: " + second.Error);
                 }
 
+                result.contentUpdateSucceeded = true;
+                result.downloadedFileCount = second.DownloadedFileCount;
+                result.downloadedBytes = second.DownloadedBytes;
+                result.cacheFileCountAfterUpdate = CountFilesIfDirectoryExists(config.cacheRoot);
                 result.packageVersion = second.PackageVersion;
                 if (!string.Equals(second.PackageVersion, config.expectedPackageVersion, StringComparison.Ordinal))
                 {
@@ -203,19 +226,56 @@ namespace StellarFrameworkVerification.Runtime
                     {
                         throw new InvalidOperationException("Downloaded HotUpdateManifest JSON is invalid.");
                     }
+                    HotUpdateManifestValidationReport validation = manifest.Validate(true);
+                    if (!validation.IsValid)
+                    {
+                        throw new InvalidOperationException(
+                            "Downloaded HotUpdateManifest is invalid: " +
+                            string.Join(" | ", validation.Errors));
+                    }
+                    if (!string.Equals(
+                            manifest.buildTarget,
+                            "StandaloneWindows64",
+                            StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            "Downloaded HotUpdateManifest target mismatch. Expected=StandaloneWindows64, " +
+                            "Actual=" + manifest.buildTarget);
+                    }
+
+                    result.resKitManifestLoaded = true;
+                    result.manifestBuildTarget = manifest.buildTarget;
+                    result.aotMetadataKeys = manifest.aotMetadataKeys.ToArray();
 
                     string actualSha = ComputeSha256(hotUpdateAsset.bytes);
                     string expectedSha = HotUpdateManifest.NormalizeSha256(manifest.hotUpdateAssemblySha256);
-                    if (!string.Equals(actualSha, expectedSha, StringComparison.OrdinalIgnoreCase))
+                    result.actualAssemblySha256 = actualSha;
+                    result.expectedAssemblySha256 = expectedSha;
+                    result.resKitAssemblyLoaded = hotUpdateAsset.bytes != null && hotUpdateAsset.bytes.Length > 0;
+                    result.assemblySha256Verified = string.Equals(
+                        actualSha,
+                        expectedSha,
+                        StringComparison.OrdinalIgnoreCase);
+                    if (!result.assemblySha256Verified)
                     {
                         throw new InvalidOperationException(
                             $"Downloaded hot-update DLL SHA256 mismatch. Expected={expectedSha}, Actual={actualSha}");
                     }
                 }
 
-                HybridCLRUpdateResult codeUpdate = await HybridCLRKit.RunAsync(
-                    HotUpdateSettings.LoadOrCreateDefault(),
-                    cancellationToken: cancellationToken);
+                HotUpdateSettings codeSettings = HotUpdateSettings.LoadOrCreateDefault();
+                IResCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult> codeProvider =
+                    ResKit.GetCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult>(HybridCLRResCodeUpdateProvider.ProviderId);
+                HybridCLRUpdateResult codeUpdate;
+                using (ResScope codeResources = ResKit.CreateCustomScope(
+                           YooAssetResKitInstaller.LoaderKey,
+                           "HotUpdateVerification.CodeUpdate"))
+                {
+                    codeUpdate = await codeProvider.RunAsync(
+                        codeSettings,
+                        codeResources,
+                        cancellationToken: cancellationToken);
+                }
                 if (!codeUpdate.Success || codeUpdate.State != HybridCLRUpdateState.EnteredHotUpdate)
                 {
                     throw new InvalidOperationException("HybridCLR startup failed: " + codeUpdate.Error);
@@ -223,6 +283,19 @@ namespace StellarFrameworkVerification.Runtime
 
                 result.loadedAssemblyFullName = codeUpdate.LoadedAssemblyFullName;
                 result.manifestSource = codeUpdate.ManifestSource;
+                result.aotMetadataKeysLoaded = codeUpdate.LoadedAotMetadataKeys ?? Array.Empty<string>();
+                bool enteredHotUpdate = codeUpdate.Success &&
+                                        codeUpdate.State == HybridCLRUpdateState.EnteredHotUpdate;
+                result.aotMetadataLoadSucceeded = enteredHotUpdate &&
+                                                  ContainsSameKeys(
+                                                      result.aotMetadataKeys,
+                                                      result.aotMetadataKeysLoaded);
+                result.assemblyLoadSucceeded = enteredHotUpdate &&
+                                              !string.IsNullOrWhiteSpace(result.loadedAssemblyFullName) &&
+                                              result.loadedAssemblyFullName.IndexOf(
+                                                  "HotUpdate",
+                                                  StringComparison.OrdinalIgnoreCase) >= 0;
+                result.entryPointInvoked = enteredHotUpdate;
                 if (string.IsNullOrWhiteSpace(result.loadedAssemblyFullName) ||
                     !result.loadedAssemblyFullName.Contains("HotUpdate"))
                 {
@@ -230,13 +303,21 @@ namespace StellarFrameworkVerification.Runtime
                         "HybridCLR runner completed without the expected HotUpdate assembly.");
                 }
                 if (string.IsNullOrWhiteSpace(result.manifestSource) ||
-                    !result.manifestSource.StartsWith("ResKit:YooAsset:", StringComparison.Ordinal))
+                    !result.manifestSource.StartsWith(
+                        $"ResKit:{YooAssetResKitInstaller.LoaderKey}:",
+                        StringComparison.Ordinal))
                 {
                     throw new InvalidOperationException(
                         "HybridCLR manifest was not sourced from the YooAsset ResKit backend.");
                 }
+                if (!result.aotMetadataLoadSucceeded)
+                {
+                    throw new InvalidOperationException(
+                        "HybridCLR did not report successful loading of every manifest AOT metadata key.");
+                }
 
                 result.success = true;
+                result.status = "PASS";
                 return result;
             }
             catch (OperationCanceledException)
@@ -246,6 +327,7 @@ namespace StellarFrameworkVerification.Runtime
             catch (Exception ex)
             {
                 result.success = false;
+                result.status = "FAIL";
                 result.error = ex.ToString();
                 return result;
             }
@@ -253,7 +335,8 @@ namespace StellarFrameworkVerification.Runtime
             {
                 server?.Dispose();
                 await CleanupPackageAsync(config?.packageName);
-                YooAssetResKitInstaller.Uninstall();
+                YooAssetContentUpdateInstaller.Uninstall();
+                YooAssetResKitInstaller.UninstallLoader();
                 DeleteDirectorySafe(config?.cacheRoot);
             }
         }
@@ -320,12 +403,23 @@ namespace StellarFrameworkVerification.Runtime
                 await CleanupPackageAsync(config.packageName);
                 LogAndroidStage("PackageCleanupCompleted");
                 LogAndroidStage("ResKitUninstallStarted");
-                YooAssetResKitInstaller.Uninstall();
-                LogAndroidStage("ResKitUninstalled");
+                YooAssetContentUpdateInstaller.Uninstall();
+                YooAssetResKitInstaller.UninstallLoader();
+                YooAssetResKitInstaller.InstallLoader(config.packageName);
+                YooAssetContentUpdateInstaller.Install();
+                LogAndroidStage("ResKitInstalled");
 
                 string host = $"http://{config.host}:{config.port.ToString(CultureInfo.InvariantCulture)}";
                 LogAndroidStage("ContentUpdateStarted");
-                var update = await YooAssetContentUpdater.UpdateHostPackageAsync(
+                IResContentUpdateProvider<
+                    YooAssetContentUpdateOptions,
+                    YooAssetContentUpdateProgress,
+                    YooAssetContentUpdateResult> contentUpdater =
+                    ResKit.GetContentUpdateProvider<
+                        YooAssetContentUpdateOptions,
+                        YooAssetContentUpdateProgress,
+                        YooAssetContentUpdateResult>(YooAssetResContentUpdateProvider.ProviderId);
+                var update = await contentUpdater.UpdateAsync(
                     new YooAssetContentUpdateOptions
                     {
                         PackageName = config.packageName,
@@ -337,8 +431,7 @@ namespace StellarFrameworkVerification.Runtime
                         DownloadWatchDogSeconds = 30,
                         DownloadingMaxNumber = 2,
                         FailedTryAgain = 2,
-                        ResumeDownloadMinimumSize = 1024L * 1024L,
-                        InstallResKitOnSuccess = true
+                        ResumeDownloadMinimumSize = 1024L * 1024L
                     },
                     cancellationToken: cancellationToken);
                 LogAndroidStage("ContentUpdateCompleted:" + update.Success);
@@ -446,9 +539,18 @@ namespace StellarFrameworkVerification.Runtime
                 try
                 {
                     LogAndroidStage("HybridCLRRunStarted");
-                    codeUpdate = await HybridCLRKit.RunAsync(
-                        HotUpdateSettings.LoadOrCreateDefault(),
-                        cancellationToken: cancellationToken);
+                    HotUpdateSettings codeSettings = HotUpdateSettings.LoadOrCreateDefault();
+                    IResCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult> codeProvider =
+                        ResKit.GetCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult>(HybridCLRResCodeUpdateProvider.ProviderId);
+                    using (ResScope codeResources = ResKit.CreateCustomScope(
+                               YooAssetResKitInstaller.LoaderKey,
+                               "AndroidHotUpdateVerification.CodeUpdate"))
+                    {
+                        codeUpdate = await codeProvider.RunAsync(
+                            codeSettings,
+                            codeResources,
+                            cancellationToken: cancellationToken);
+                    }
                     LogAndroidStage("HybridCLRRunCompleted:" + codeUpdate.Success);
                 }
                 finally
@@ -459,13 +561,10 @@ namespace StellarFrameworkVerification.Runtime
                 result.entryMarkerObserved = entryMarkerObserved;
                 result.loadedAssemblyFullName = codeUpdate.LoadedAssemblyFullName;
                 result.manifestSource = codeUpdate.ManifestSource;
-                result.aotMetadataKeysLoaded = HybridCLRHook.AOTMetaAssemblyFiles == null
-                    ? Array.Empty<string>()
-                    : HybridCLRHook.AOTMetaAssemblyFiles.ToArray();
+                result.aotMetadataKeysLoaded = codeUpdate.LoadedAotMetadataKeys ?? Array.Empty<string>();
 
                 bool enteredHotUpdate = codeUpdate.Success &&
-                                        codeUpdate.State == HybridCLRUpdateState.EnteredHotUpdate &&
-                                        HybridCLRHook.State == HybridCLRHook.HotUpdateState.EnteredHotUpdate;
+                                        codeUpdate.State == HybridCLRUpdateState.EnteredHotUpdate;
                 result.aotMetadataLoadSucceeded = enteredHotUpdate &&
                                                   ContainsSameKeys(
                                                       result.aotMetadataKeys,
@@ -483,7 +582,9 @@ namespace StellarFrameworkVerification.Runtime
                         "Android HybridCLR startup failed: " + codeUpdate.Error);
                 }
                 if (string.IsNullOrWhiteSpace(codeUpdate.ManifestSource) ||
-                    !codeUpdate.ManifestSource.StartsWith("ResKit:YooAsset:", StringComparison.Ordinal))
+                    !codeUpdate.ManifestSource.StartsWith(
+                        $"ResKit:{YooAssetResKitInstaller.LoaderKey}:",
+                        StringComparison.Ordinal))
                 {
                     throw new InvalidOperationException(
                         "Android HybridCLR did not load its manifest through the YooAsset ResKit backend.");
@@ -536,8 +637,7 @@ namespace StellarFrameworkVerification.Runtime
                 FailedTryAgain = 1,
                 OperationTimeoutSeconds = 20,
                 DownloadWatchDogSeconds = 10,
-                ResumeDownloadMinimumSize = 1,
-                InstallResKitOnSuccess = true
+                ResumeDownloadMinimumSize = 1
             };
         }
 

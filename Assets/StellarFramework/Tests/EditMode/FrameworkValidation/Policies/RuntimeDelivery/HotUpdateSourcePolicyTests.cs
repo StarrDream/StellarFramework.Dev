@@ -24,7 +24,7 @@ namespace StellarFramework.Tests.FrameworkValidation
 
             Assert.That(source, Does.Not.Contain("StellarFramework.HotUpdateKit.Addressables"));
             Assert.That(source, Does.Not.Contain("OptionalHotUpdateAddressablesRuntimeAssemblyName"));
-            Assert.That(source, Does.Not.Contain("StellarFramework.HybridCLRKit"));
+            Assert.That(source, Does.Not.Contain("StellarFramework.ResKit.CodeUpdate.HybridCLR"));
             Assert.That(source, Does.Contain("StellarFramework.ResKit.Addressables"));
         }
 

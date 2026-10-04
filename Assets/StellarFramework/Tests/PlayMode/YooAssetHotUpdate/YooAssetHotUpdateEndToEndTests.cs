@@ -16,7 +16,7 @@ namespace StellarFramework.Tests.ReleaseGate
         private const int TimeoutMs = 120000;
         private const string PrepareMenuPath =
             "Tools/StellarFramework/Verification/Prepare HotUpdate PlayMode Release Gate";
-        private const string HotUpdateEntryLog = "<color=red>Hello HybridCLR , 热更成功 ;</color>";
+        private const string HotUpdateEntryLog = "[TankArena] Gameplay entry started.";
         private static readonly Regex ExpectedInterruptedBundleLog = new Regex(
             @"^URL : http://127\.0\.0\.1:\d+/[A-Za-z0-9_.-]+\.bundle Error : Unknown Error$");
 

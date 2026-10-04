@@ -17,7 +17,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
         private const string PackagePrefix = "StellarFramework.HotUpdatePublisher.";
         private const string YooAssetPackageName = "com.tuyoogame.yooasset";
 
-        [MenuItem("Tools/StellarFramework/HotUpdate Publisher/Create Android Base Release")]
+        [MenuItem("Tools/StellarFramework/热更发布器/创建 Android 客户端基包")]
         private static void CreateAndroidBaseRelease()
         {
             if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
@@ -46,7 +46,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                 PackagePrefix + prefsSuffix + BaseAppVersionPrefsSuffix,
                 PlayerSettings.bundleVersion).Trim();
             if (string.IsNullOrWhiteSpace(baseAppVersion))
-                throw new InvalidOperationException("Set a non-empty Base App version in HotUpdate Publisher Overview before creating the BaseRelease.");
+                throw new InvalidOperationException("请先在热更发布器“概览”中填写客户端基包版本。");
 
             try
             {

@@ -19,7 +19,7 @@ Adapter Profile：可选的 Kit 间、Unity 或第三方技术栈连接层
 
 `StellarFramework` / `StellarFramework.Extensions` 表示代码由哪个使用者仓发布；`foundation` / `extension` / `adapter` 表示 Kit 在依赖图中的位置。两套分类互不等价。
 
-`HybridCLRKit`、它的 Editor 工具和 HotUpdate Publisher 随 General 主仓发布，用户可从 General 导出。它仍是架构层的 `extension / runtime-delivery`：只有选择代码热更时才需要 HybridCLR UPM 包和 ResKit，其他 Kit 不依赖它。Extensions 仓只发布 Algorithms、World 和 Flow。
+代码热更扩展随 General 主仓发布，名称为 `ResKit.CodeUpdate.HybridCLR`，Editor 工具为 `ResKit.CodeUpdate.HybridCLR.Tools`。运行时源码、程序集和 ToolsHub 模块均归在 ResKit 的 CodeUpdate 扩展目录下。框架默认热更新组合使用 `ResKit.YooAsset` 准备资源内容、`ResKit.CodeUpdate.HybridCLR` 加载代码；两个 Provider 可以独立替换。普通资源项目无需安装热更新扩展。Extensions 仓只发布 Algorithms、World 和 Flow。
 
 ## Catalog 元数据
 
@@ -73,10 +73,12 @@ Stable + Experimental -> Experimental
 当前推荐交付配置：
 
 - `localization.complete`：完整本地化生产配置，包含 Core、UnityUGUI + TextMeshPro 运行时绑定、UGUI/TMP Scanner、稳定 Binding Registry、Translation Workspace、JSON/CSV 交换、Validator 与 ToolsHub；不强制引入 SettingsKit、UIKit 或资源系统。
-- `reskit.complete`：完整 ResKit 开发配置，以 `reskit.tools` 为入口，包含 ResKit.Core、PoolKit、LogKit、Generated.AssetMap、ToolsHub 与资源审计/生成工具；具体 AssetBundle/Addressables/YooAsset 后端继续按项目选择。
+- `reskit.complete`：ResKit 完整开发配置，包含 ResKit.Core、Resources 后端、PoolKit、LogKit、Generated.AssetMap、ToolsHub 与资源审计/生成工具；AssetBundle、Addressables 和 YooAsset 后端继续按项目选择。
 - `uiadaptation.complete`：独立 UI 适配生产配置，包含 UIAdaptationKit Runtime + ToolsHub Preview/Validator；只依赖 UGUI，不依赖 UIKit。
 - `uikit.complete`：完整 UIKit 生产配置，包含 UIKit Runtime/Tools、UIKit.ResKitAdapter、ResKit Complete，并组合独立 UIAdaptationKit；第三方资源后端仍按项目需要扩展。
-- `hotupdate.full`：完整的内容与代码热更组合，以 `reskit.yooasset + reskit.tools + hybridclrkit.tools` 为入口，自动得到 ResKit、YooAsset、HybridCLRKit、PoolKit、LogKit、ToolsHub、AssetsMap 与对应编辑器工具。这个组合及其原子 Kit 随 General 发布，不要求项目使用 Extensions。
+- `hotupdate.full`：框架默认的完整内容与代码热更组合，以 `reskit.yooasset + reskit.contentupdate.yooasset + reskit.tools + reskit.codeupdate.hybridclr.tools` 为入口，分别包含 YooAsset Loader、内容更新 Provider、HybridCLR 代码更新 Provider 及对应编辑器工具。各 Provider 也能单独导出或替换。
+
+资源加载、内容更新、代码热更运行时是三个独立的 ResKit Provider 能力。YooAsset + HybridCLR 是框架提供的默认热更新组合，`Hot Update Full` 是推荐的完整导出入口；项目可单独选择、替换或组合各 Provider。完整启动流程、自定义 Provider 案例和制品匹配要求见 [ResKit 资源与热更新扩展](ResourceAndCodeUpdatePlugins.md)。
 
 Export 的用户导航与架构 tier 是两个独立维度：
 
@@ -91,7 +93,7 @@ Export 的用户导航与架构 tier 是两个独立维度：
 | 层级 | Kit / Profile |
 | --- | --- |
 | Foundation | LogKit、EventKit、PoolKit、SingletonKit、FSMKit、ActionKit、BindableKit、ConfigKit.Core、HttpKit、ResKit.Core、SettingsKit.Core、TimeKit、SaveKit.Core、GridKit、WorldKit.Core、SpatialKit、SimulationKit、PathKit、FlowKit.Core、PlacementKit.Core |
-| Extension | AudioKit.Core、RuntimeTools.Core、UIKit.Core、UIAdaptationKit.Core、HybridCLRKit（General 发布）、WorldGenKit.Core、WorldGenKit.Builtins、WorldGenKit.Authoring、WorldGenKit.Resources、WorldGenKit.Feature、WorldKit.Streaming |
+| Extension | AudioKit.Core、RuntimeTools.Core、UIKit.Core、UIAdaptationKit.Core、ResKit.CodeUpdate.HybridCLR（General 发布）、WorldGenKit.Core、WorldGenKit.Builtins、WorldGenKit.Authoring、WorldGenKit.Resources、WorldGenKit.Feature、WorldKit.Streaming |
 | Adapter | ConfigKit.NewtonsoftJson、SettingsKit.UnityAdapters、SettingsKit.AudioKitAdapter、AudioKit.ResKitAdapter、ResKit.AssetBundle、ResKit.Addressables、ResKit.YooAsset、UIKit.ResKitAdapter、LocalizationKit.SettingsAdapter、LocalizationKit.UnityUGUIAdapter、LocalizationKit.TMPAdapter、SaveKit.NewtonsoftJson、PathKit.GridKitAdapter、FlowKit.UnityIntegration、Feature.ResourcesAdapter、Feature.PlacementAdapter、Feature.AuthoringAdapter、Feature.WorldKitAdapter、Feature.SaveKitAdapter、WorldGenKit.DebugTextureAdapter、WorldGenKit.MeshAdapter、WorldGenKit.TilemapAdapter、WorldGenKit.UnityTerrainAdapter、WorldGenKit.StreamingAdapter、WorldKit.Streaming.SaveKitAdapter、WorldKit.Streaming.UnityAdapter |
 
 这只是展示和依赖约束元数据，不会让 Foundation 自动安装。选择某个 Kit 时，导出器仍只按 `requiredProfileIds` 计算实际依赖闭包。
@@ -110,7 +112,7 @@ Adapter 横向连接可选能力
 
 - Foundation 不能依赖 Extension。
 - Extension 可以依赖 Foundation；Extension 间是否依赖必须由真实稳定的领域边界决定。
-- Adapter 用于可选集成，避免把 Addressables、HybridCLR、ResKit 等选择变成 Foundation Kit 的硬依赖。HybridCLRKit 虽在 General 主仓提供，仍须由项目显式选择。
+- Adapter 用于可选集成，避免把 Addressables、HybridCLR、ResKit 等选择变成 Foundation Kit 的硬依赖。ResKit 的 HybridCLR 代码更新实现虽在 General 主仓提供，仍须由项目显式选择。
 - 不因“方便”把业务系统写入 Foundation。Crop、NPC、Quest、Farm 等先留在业务项目，经过真实项目验证后再决定是否升格为 Extension。
 
 ## RuntimeTools 的定位

@@ -1,33 +1,32 @@
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
-using StellarFramework.HybridCLR;
+using StellarFramework.Res.CodeUpdate.HybridCLR;
 using UnityEditor;
 using YooAsset.Editor;
 
 namespace StellarFramework.Editor.HotUpdatePublisher
 {
-    /// <summary>Creates a separate business package while preserving all existing YooAsset packages.</summary>
+    /// <summary>Creates a business package containing Publisher outputs while preserving existing packages.</summary>
     internal static class YooAssetPublisherFirstUseSetup
     {
         private const string PackageNamePrefsSuffix = ".packageName";
         private const string AssetOutputRootPrefsSuffix = ".assetOutputRoot";
         private const string PackageGroupName = "HotUpdateRuntimePayload";
-        private const string GeneratedRoot = "Assets/HotUpdatePublisherConsumerE2E/Generated";
-        private const string ConsumerBehaviorPath = "Assets/HotUpdatePublisherConsumerE2E/Content/HotUpdateBehavior.txt";
+        private const string GeneratedRoot = "Assets/HotUpdate/Generated";
 
         private static readonly Regex SafePackageName = new Regex(
             @"\A[A-Za-z0-9][A-Za-z0-9_-]{0,63}\z",
             RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-        [MenuItem("Tools/StellarFramework/HotUpdate Publisher/Configure Recommended YooAsset Collector")]
+        [MenuItem("Tools/StellarFramework/热更发布器/创建 YooAsset 资源收集配置")]
         private static void ConfigureRecommendedCollector()
         {
             string packageName = ReadSelectedPackageName();
             if (!IsSafeBusinessPackageName(packageName))
             {
                 UnityEngine.Debug.LogError(
-                    "[HotUpdatePublisher] Enter a valid business Package name first. Verification-only package names are rejected.");
+                    "[热更发布器] 请先填写有效的业务资源包名。验证用途的资源包不能用于发布。");
                 return;
             }
 
@@ -35,7 +34,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             if (!IsSafeAssetRoot(generatedRoot))
             {
                 UnityEngine.Debug.LogError(
-                    $"[HotUpdatePublisher] HotUpdate asset output root '{generatedRoot}' must be a safe folder inside Assets/. No Collector changes were made.");
+                    $"[热更发布器] 热更文件生成目录“{generatedRoot}”必须位于 Assets/ 下。本次没有更改 YooAsset 配置。");
                 return;
             }
 
@@ -49,17 +48,8 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             catch (Exception exception) when (exception is IOException || exception is InvalidDataException || exception is ArgumentException)
             {
                 UnityEngine.Debug.LogError(
-                    "[HotUpdatePublisher] HotUpdateSettings AOT metadata selection is invalid: " + exception.Message);
+                    "[热更发布器] HotUpdateSettings 中的 AOT 元数据选择无效：" + exception.Message);
                 return;
-            }
-
-            string consumerBehaviorAbsolutePath = ToAbsoluteAssetPath(ConsumerBehaviorPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(consumerBehaviorAbsolutePath));
-            if (!File.Exists(consumerBehaviorAbsolutePath))
-            {
-                File.WriteAllText(consumerBehaviorAbsolutePath,
-                    "publisher-consumer-behavior=v1\n");
-                AssetDatabase.ImportAsset(ConsumerBehaviorPath, ImportAssetOptions.ForceUpdate);
             }
 
             AssetBundleCollectorSetting setting = AssetBundleCollectorSettingData.Setting;
@@ -83,11 +73,11 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                     package.EnableAddressable = true;
                     AssetBundleCollectorSettingData.SaveFile();
                     UnityEngine.Debug.Log(
-                        $"[HotUpdatePublisher] Enabled Addressable on existing business package '{packageName}' so AddressByFileName collectors produce runtime-loadable asset addresses.");
+                        $"[热更发布器] 已为业务资源包“{packageName}”启用 Addressable，确保资源收集配置可以生成运行时地址。");
                 }
 
                 UnityEngine.Debug.Log(
-                    $"[HotUpdatePublisher] Business package '{packageName}' already exists. Existing groups and collectors were preserved; Addressable was enabled if needed. Review the package in the Collector window.");
+                    $"[热更发布器] 业务资源包“{packageName}”已存在。原有分组和收集项已保留；请在资源收集器中确认热更输出路径。");
                 EditorApplication.ExecuteMenuItem("YooAsset/AssetBundle Collector");
                 return;
             }
@@ -95,7 +85,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             package = new AssetBundleCollectorPackage
             {
                 PackageName = packageName,
-                PackageDesc = "HotUpdate Publisher business package. Not the Verification package.",
+                PackageDesc = "业务项目热更资源包；仅收集此处配置的热更文件。",
                 EnableAddressable = true,
                 SupportExtensionless = true,
                 LocationToLower = false,
@@ -107,12 +97,11 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             var group = new AssetBundleCollectorGroup
             {
                 GroupName = PackageGroupName,
-                GroupDesc = "Publisher-generated HybridCLR payload and consumer content",
+                GroupDesc = "由热更发布器生成的代码、清单和 AOT 元数据",
                 ActiveRuleName = nameof(EnableGroup)
             };
             package.Groups.Add(group);
 
-            AddCollector(group, ConsumerBehaviorPath);
             AddCollector(group, generatedRoot + "/Manifest/HotUpdateManifest.json");
             AddCollector(group, generatedRoot + "/Code/HotUpdate.dll.bytes");
             foreach (string metadataPath in metadataPaths)
@@ -122,7 +111,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             AssetBundleCollectorSettingData.SaveFile();
 
             UnityEngine.Debug.Log(
-                $"[HotUpdatePublisher] Created independent business package '{packageName}' with one consumer content asset and six Publisher output paths. Existing Verification configuration was preserved and is not used by this package.");
+                $"[热更发布器] 已创建业务资源包“{packageName}”，并添加代码清单、热更 DLL 和 AOT 元数据的收集路径。原有验证配置已保留。");
             EditorApplication.ExecuteMenuItem("YooAsset/AssetBundle Collector");
         }
 
@@ -144,9 +133,9 @@ namespace StellarFramework.Editor.HotUpdatePublisher
             string suffix = projectRoot.Replace('\\', '/');
             string packageName = EditorPrefs.GetString(
                 "StellarFramework.HotUpdatePublisher." + suffix + PackageNamePrefsSuffix,
-                "HotUpdatePublisherConsumerE2E").Trim();
+                "DefaultPackage").Trim();
             return string.IsNullOrWhiteSpace(packageName)
-                ? "HotUpdatePublisherConsumerE2E"
+                ? "DefaultPackage"
                 : packageName;
         }
 
@@ -188,11 +177,5 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                    packageName.IndexOf("verification", StringComparison.OrdinalIgnoreCase) < 0;
         }
 
-        private static string ToAbsoluteAssetPath(string assetPath)
-        {
-            string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath).FullName;
-            return Path.GetFullPath(Path.Combine(projectRoot,
-                assetPath.Replace('/', Path.DirectorySeparatorChar)));
-        }
     }
 }

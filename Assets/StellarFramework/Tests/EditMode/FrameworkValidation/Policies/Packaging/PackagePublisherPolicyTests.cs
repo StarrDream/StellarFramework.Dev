@@ -32,6 +32,17 @@ namespace StellarFramework.Tests.FrameworkValidation
         }
 
         [Test]
+        public void GeneralReleaseIgnoreRulesKeepNestedPublisherSourceFilesTrackable()
+        {
+            string gitignore = ReadAssetText(
+                "Tools/RepositoryPublisher/Templates/StellarFramework.gitignore");
+
+            Assert.That(gitignore, Does.Contain("/Build/"));
+            Assert.That(gitignore, Does.Contain("/Builds/"));
+            Assert.That(gitignore, Does.Not.Contain("[Bb]uild/"));
+        }
+
+        [Test]
         public void NewtonsoftDependentToolsHubEditorIsBehindOptionalUpmVersionDefine()
         {
             string editorAssembly = ReadAssetText(
@@ -163,7 +174,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             string source = ReadAssetText(
                 "Assets/StellarFramework/Editor/StellarToolsHub/Modules/Packaging/StellarFrameworkPackagePublisher.cs");
 
-            Assert.That(source, Does.Contain("Assets/StellarFramework/Runtime/Kits/HybridCLRKit"));
+            Assert.That(source, Does.Contain("Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR"));
             Assert.That(source, Does.Contain("Assets/StellarFramework/Runtime/Kits/Reskit/Loaders/AddressableLoader"));
             Assert.That(source, Does.Contain("Assets/StellarFramework/Tests"));
         }
@@ -202,7 +213,7 @@ namespace StellarFramework.Tests.FrameworkValidation
         }
 
         [Test]
-        public void FullPayloadAcceptsFrameworkAndSampleRuntimePaths()
+        public void FullPayloadIncludesFrameworkRuntimeAndKeepsSamplesSeparate()
         {
             Assert.That(
                 InvokePublisherBool(
@@ -213,7 +224,8 @@ namespace StellarFramework.Tests.FrameworkValidation
                 InvokePublisherBool(
                     "IsIncludedInFullPayload",
                     "Assets/StellarFramework/Samples/TankArena/Runtime/HotUpdateMain.cs"),
-                Is.True);
+                Is.False,
+                "Samples are distributed as repository teaching assets, not copied into the full runtime payload.");
         }
 
         [Test]

@@ -23,6 +23,6 @@ Treat these directories as build outputs. Regenerate them through **Tools > Stel
 ## Documentation
 
 - Playable demo and controls: `Assets/StellarFramework/Samples/TankArena/README.md`
-- HybridCLR setup and project integration: `Assets/StellarFramework/FrameworkDoc/02-Kits/HybridCLRKit`
+- HybridCLR setup and project integration: `Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/CodeUpdate/HybridCLR`
 - Android / Windows release gates: `Assets/StellarFrameworkVerification`
 - Android device automation: `Tools/AndroidVerification`

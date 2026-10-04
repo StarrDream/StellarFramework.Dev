@@ -1,5 +1,5 @@
 {
-    "name": "StellarFramework.HybridCLRKit",
+    "name": "StellarFramework.ResKit.CodeUpdate.HybridCLR",
     "rootNamespace": "",
     "references": [
         "StellarFramework.LogKit",

@@ -3,8 +3,8 @@
   "rootNamespace": "StellarFramework.Editor.HotUpdatePublisher",
   "references": [
     "StellarFramework.ToolsHub.HotUpdatePublisher.Editor",
-    "StellarFramework.ToolsHub.HybridCLRKit.Editor",
-    "StellarFramework.HybridCLRKit",
+    "StellarFramework.ToolsHub.ResKit.CodeUpdate.HybridCLR.Editor",
+    "StellarFramework.ResKit.CodeUpdate.HybridCLR",
     "HybridCLR.Editor"
   ],
   "includePlatforms": ["Editor"],

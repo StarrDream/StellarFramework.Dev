@@ -3,13 +3,22 @@ using StellarFramework.Res;
 
 namespace StellarFramework.Tests.FrameworkValidation
 {
-    public sealed class YooAssetContentUpdaterPolicyTests
+    public sealed class YooAssetContentUpdateProviderPolicyTests
     {
         [Test]
         public void InvalidOptionsReturnStableErrorCode()
         {
+            YooAssetContentUpdateInstaller.Install();
+            IResContentUpdateProvider<
+                YooAssetContentUpdateOptions,
+                YooAssetContentUpdateProgress,
+                YooAssetContentUpdateResult> updater =
+                ResKit.GetContentUpdateProvider<
+                    YooAssetContentUpdateOptions,
+                    YooAssetContentUpdateProgress,
+                    YooAssetContentUpdateResult>(YooAssetResContentUpdateProvider.ProviderId);
             YooAssetContentUpdateResult result =
-                YooAssetContentUpdater.UpdateHostPackageAsync(null).GetAwaiter().GetResult();
+                updater.UpdateAsync(null).GetAwaiter().GetResult();
 
             Assert.That(result.Success, Is.False);
             Assert.That(result.ErrorCode, Is.EqualTo(YooAssetContentUpdateErrorCode.InvalidOptions));

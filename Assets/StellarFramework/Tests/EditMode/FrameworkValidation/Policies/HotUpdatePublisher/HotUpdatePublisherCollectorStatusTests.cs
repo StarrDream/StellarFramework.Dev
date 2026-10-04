@@ -18,7 +18,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             HotUpdatePublisherCollectorStatus status = HotUpdatePublisherCollectorStatus.Check(packageName);
 
             Assert.That(status.IsReady, Is.False);
-            Assert.That(status.Message, Does.Contain("缺少 YooAsset 业务 Package"));
+            Assert.That(status.Message, Does.Contain("请先在“概览”填写 YooAsset 业务资源包名"));
         }
 
         [Test]
@@ -48,7 +48,7 @@ namespace StellarFramework.Tests.FrameworkValidation
                 HotUpdatePublisherCollectorStatus.Check("BusinessPackage");
 
             Assert.That(status.IsReady, Is.False);
-            Assert.That(status.Message, Does.Contain("YooAsset Editor Adapter"));
+            Assert.That(status.Message, Does.Contain("YooAsset 编辑器扩展尚未加载"));
         }
     }
 }

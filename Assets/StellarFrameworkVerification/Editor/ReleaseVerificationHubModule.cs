@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using StellarFramework.Editor;
 using StellarFramework.Editor.Modules;
-using StellarFramework.HybridCLR;
+using StellarFramework.Res.CodeUpdate.HybridCLR;
 using UnityEditor;
 using UnityEngine;
 
@@ -84,7 +84,7 @@ namespace StellarFrameworkVerification.Editor
             ClearDetails();
 
             HotUpdateSettings settings = HotUpdateSettings.LoadOrCreateDefault();
-            HotUpdateSettingsValidationReport settingsReport = settings.Validate(strictProduction: true);
+            HotUpdateSettingsValidationReport settingsReport = settings.Validate();
             foreach (string warning in settingsReport.Warnings) _details.Add("[警告] " + warning);
             foreach (string error in settingsReport.Errors) _details.Add("[错误] " + error);
             if (!settingsReport.IsValid)

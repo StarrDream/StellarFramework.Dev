@@ -1,13 +1,13 @@
-# HybridCLRKit / 代码热更新源码文档
+# ResKit.CodeUpdate.HybridCLR / 源码说明
 
 ## 模块职责
 
-`HybridCLRKit` 是一个 **startup-only code-update adapter**。它只负责 HybridCLR 代码热更新，不拥有内容更新系统。
+`ResKit.CodeUpdate.HybridCLR` 是 ResKit 的 HybridCLR 代码更新 Provider。它只负责读取和加载代码载荷，不拥有内容更新系统，也不是 ResKit.Core 的硬依赖。框架默认通过 YooAsset 准备内容，再把 YooAsset Scope 交给该 Provider。
 
 核心约束：
 
 ```text
-HybridCLRKit
+ResKit.CodeUpdate.HybridCLR
   depends on ResKit.Core
   depends on HybridCLR.Runtime
   does NOT depend on Addressables
@@ -15,15 +15,15 @@ HybridCLRKit
   does NOT depend on HttpKit
 ```
 
-YooAsset / Addressables 通过 ResKit Loader key 被间接使用，因此 HybridCLRKit 不需要任何第三方资源 SDK 类型。
-HybridCLR Runtime 是例外：`HybridCLRKit` 本身就是 HybridCLR 代码热更新适配器，因此它对 `HybridCLR.Runtime` 使用显式 asmdef 依赖和强类型 API 调用。
+YooAsset / Addressables 通过应用传入的 ResKit Scope 被间接使用，因此该 Provider 不需要引用任何第三方资源 SDK 类型。
+HybridCLR Runtime 是例外：该扩展是 HybridCLR 代码运行时适配器，因此它对 `HybridCLR.Runtime` 使用显式 asmdef 依赖和强类型 API 调用。
 
 不要把 `RuntimeApi.LoadMetadataForAOTAssembly` 改回纯字符串反射。Editor 下反射可以工作，但 Release IL2CPP Linker 可能把 `HybridCLR.Runtime` 判定为不可达并裁剪，导致 Player 中 `Type.GetType("HybridCLR.RuntimeApi, HybridCLR.Runtime")` 返回 `null`。当前实现通过编译期依赖保证 Runtime API 进入 Player，并能在 HybridCLR 升级后直接暴露 API 不兼容问题。
 
 ## 源码目录
 
 ```text
-Runtime/Kits/HybridCLRKit/
+Runtime/Kits/Reskit/CodeUpdate/HybridCLR/
   HotUpdateContracts.cs
   HotUpdateManifest.cs
   HotUpdateRuntimePolicy.cs
@@ -32,43 +32,24 @@ Runtime/Kits/HybridCLRKit/
     HybridCLRHotUpdateAdapter.cs
     HybridCLRHotUpdateInstaller.cs
 
-Editor/StellarToolsHub/Modules/HybridCLRKit/
+Editor/StellarToolsHub/Modules/ResKit/CodeUpdate/HybridCLR/
   HybridCLRHotUpdateAssetExporter.cs
 ```
 
-## `HybridCLRKit`
+## ResKit Provider API
 
-对外门面位于 `HotUpdateContracts.cs`。
-
-```csharp
-HybridCLRUpdateResult result = await HybridCLRKit.RunAsync(
-    settings,
-    progress,
-    cancellationToken);
-```
-
-Facade 只负责：
-
-- 解析 Settings。
-- 做 Settings 校验。
-- 调用 `IHybridCLRCodeUpdateStrategy`。
-
-真正运行实现由 `HybridCLRCodeHotUpdateStrategy` 注册。
-
-如果运行时没有 HybridCLR Adapter，默认 `UnavailableHybridCLRCodeUpdateStrategy` 返回明确失败结果，不制造成功状态。
-
-## `IHybridCLRCodeUpdateStrategy`
-
-这是 Facade 与 HybridCLR 具体实现之间的边界。
+公共边界由 ResKit.Core 定义，HybridCLR 扩展在加载时注册自己的实现。项目从 ResKit 取得 Provider，并显式传入自己创建的资源 Scope：
 
 ```csharp
-public interface IHybridCLRCodeUpdateStrategy
-{
-    UniTask<HybridCLRUpdateResult> RunAsync(...);
-}
+using ResScope codeAssets = ResKit.CreateCustomScope(YooAssetResKitInstaller.LoaderKey, "CodeUpdate");
+IResCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult> provider =
+    ResKit.GetCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult>(HybridCLRResCodeUpdateProvider.ProviderId);
+HybridCLRUpdateResult result = await provider.RunAsync(settings, codeAssets, progress, cancellationToken);
 ```
 
-这样 `HybridCLRKit` Facade 可以存在于项目中，而真正的 HybridCLR 包和实现保持可选。
+`HybridCLRHotUpdateInstaller` 在 Player 启动前和 Editor 域加载时注册 Provider。项目可不安装该扩展，也可另行注册实现 `IResCodeUpdateProvider<TOptions, TResult>` 的代码运行时。
+
+运行时公开入口只有 ResKit Provider。Provider 要求应用传入 Scope，由应用选择 Loader 并持有 Scope 生命周期；代码运行实现 `HybridCLRCodeUpdateRuntime` 是扩展内部细节。
 
 ## `HotUpdateSettings`
 
@@ -76,7 +57,6 @@ Settings 是 **启动和导出配置**，不是远端版本描述。
 
 关键字段：
 
-- `resourceLoaderKey`
 - `hotUpdateManifestKey`
 - `hotUpdateAssemblyKey`
 - `hotUpdateEntryClass`
@@ -108,13 +88,14 @@ Manifest 是运行时事实来源，包含：
 
 Manifest 本身也是普通 ResKit `TextAsset`。运行时不会再创建 `IHotUpdateManifestSource`、HTTP source、StreamingAssets source 或 source chain。
 
-## `HybridCLRRunner`
+## Provider 的内部执行流程
 
 主流程：
 
 ```text
-Validate Settings
-  -> ResKit.CreateCustomScope(ResourceLoaderKey)
+Project creates a ResKit ResScope
+  -> HybridCLR Provider validates Settings
+  -> HybridCLRCodeUpdateRuntime reads through the supplied Scope
   -> Load Manifest TextAsset
   -> Parse + Validate Manifest
   -> parallel load DLL + all metadata TextAssets
@@ -138,13 +119,16 @@ Addressables catalog version B
 
 ### Scope
 
-Runner 使用：
+Provider 接收应用创建的 Scope：
 
 ```csharp
-using ResScope resources = ResKit.CreateCustomScope(loaderKey, "HybridCLRRunner");
+using ResScope resources = ResKit.CreateCustomScope(loaderKey, "CodeUpdate");
+IResCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult> provider =
+    ResKit.GetCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult>(HybridCLRResCodeUpdateProvider.ProviderId);
+HybridCLRUpdateResult result = await provider.RunAsync(settings, resources);
 ```
 
-因此本次启动期间加载的 Manifest / DLL / metadata 全部在同一个 Owner 生命周期中。退出 Runner 后会统一释放。
+本次启动期间加载的 Manifest / DLL / metadata 全部由该 Scope 管理。Provider 不会自行选择或创建 Loader；应用在调用结束后释放 Scope。
 
 ### 并行 metadata 加载
 
@@ -177,19 +161,19 @@ Editor / Development 下允许 Manifest 暂时缺 SHA，用于开发期链路自
 
 即非 Editor 且非 Development Build 的 Player 视为生产运行时。
 
-## `HybridCLRHook`
+## 内部 HybridCLR 桥接
 
-Hook 封装两步：
+`HybridCLRHook` 是 Provider 内部实现，不是项目侧 API。它封装两步：
 
 1. `LoadMetadataForAOTAssembliesAsync`
 2. `LoadAndStartHotUpdateAssembly`
 
 它不加载资源，只接受已经准备好的 byte[]。
 
-这保证 HybridCLR API 和资源系统之间仍有边界：
+项目侧应只调用 ResKit 的 `IResCodeUpdateProvider`；Provider 内部把从 ResKit Scope 读取到的字节交给 HybridCLR：
 
 ```text
-ResKit -> byte[] -> HybridCLRHook
+ResKit Scope -> HybridCLR Provider -> byte[] -> HybridCLR Runtime API
 ```
 
 ## Exporter
@@ -216,8 +200,8 @@ Exporter 也不调用 Addressables Build，不知道 YooAsset Package，不做�
 
 `StellarFramework.ToolsHub.Addressables.Editor` 不再引用：
 
-- `StellarFramework.HybridCLRKit`
-- `StellarFramework.ToolsHub.HybridCLRKit.Editor`
+- `StellarFramework.ResKit.CodeUpdate.HybridCLR`
+- `StellarFramework.ToolsHub.ResKit.CodeUpdate.HybridCLR.Editor`
 
 Addressables Tools Hub 只负责：
 
@@ -231,14 +215,14 @@ Addressables Tools Hub 只负责：
 
 ## YooAsset 边界
 
-HybridCLRKit 不引用 YooAsset assembly。项目启动层完成：
+HybridCLR Provider 不引用 YooAsset assembly。项目启动层完成：
 
 ```text
-YooAssetContentUpdater.UpdateHostPackageAsync
-HybridCLRKit.RunAsync
+ResKit.GetContentUpdateProvider(...).UpdateAsync(...)
+ResKit.GetCodeUpdateProvider(...).RunAsync(settings, codeAssets)
 ```
 
-`YooAssetContentUpdater` 位于独立的 `ResKit.YooAsset` Adapter；HybridCLRKit 只通过 ResKit Loader key 消费已经准备好的 Manifest / DLL / metadata。
+`YooAssetResContentUpdateProvider` 位于独立的 `ResKit.YooAsset` Adapter；HybridCLR Provider 只通过应用传入的 ResKit Scope 消费已经准备好的 Manifest / DLL / metadata。应用可换用其他内容更新和 Loader Provider，前提是这些 Provider 提供同一份可匹配的代码制品。
 
 ## 错误处理
 
@@ -258,14 +242,14 @@ HybridCLRKit.RunAsync
 - metadata 资源读取并行化，减少串行启动等待。
 - `ResScope` 统一释放句柄。
 - 不创建第二套内容缓存/引用计数。
-- 不在 HybridCLRKit 内复制 YooAsset/Addressables 下载状态机。
+- 不在代码更新 Provider 内复制 YooAsset/Addressables 下载状态机。
 
 ## 发布冻结条件
 
-HybridCLRKit 可冻结前应满足：
+ResKit.CodeUpdate.HybridCLR 可发布前应满足：
 
 1. Runtime assembly 不引用 Addressables/YooAsset/HttpKit。
-2. Addressables Editor assembly 不引用 HybridCLRKit。
+2. Addressables Editor assembly 不引用该扩展。
 3. Manifest 只通过 ResKit 读取。
 4. Exporter 只写 `Assets/GameHotUpdate`。
 5. Release SHA 校验有效。
@@ -274,5 +258,5 @@ HybridCLRKit 可冻结前应满足：
 
 ## 相关文档
 
-- [HybridCLRKit 说明文档](HybridCLRKit-代码热更新-说明文档-Guide.md)
+- [ResKit.CodeUpdate.HybridCLR 说明](ResKit-CodeUpdate-HybridCLR-说明文档-Guide.md)
 - [ResKit 源码文档](../Reskit/ResKit-统一资源-源码文档-Guide.md)

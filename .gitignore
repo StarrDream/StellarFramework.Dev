@@ -8,6 +8,7 @@
 !/Assets/**
 
 /Assets/PayloadInspect*
+__pycache__/
 
 !/ProjectSettings/
 !/ProjectSettings/**

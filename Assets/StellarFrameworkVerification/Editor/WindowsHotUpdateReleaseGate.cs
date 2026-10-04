@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using HybridCLR.Editor.Commands;
 using StellarFramework.Editor.Modules;
-using StellarFramework.HybridCLR;
+using StellarFramework.Res.CodeUpdate.HybridCLR;
 using StellarFrameworkVerification.Runtime;
 using UnityEditor;
 using UnityEditor.Build;

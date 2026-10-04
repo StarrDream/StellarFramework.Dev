@@ -1,15 +1,23 @@
-# HybridCLRKit / 代码热更新说明文档
+# ResKit.CodeUpdate.HybridCLR / 代码热更新
+
+`ResKit.CodeUpdate.HybridCLR` 是 ResKit 的代码更新 Provider。它通过项目传入的 `ResScope` 读取并校验 HybridCLR payload，加载 AOT metadata 与程序集，然后调用热更入口。框架默认使用 YooAsset 准备资源内容，再由该 Provider 运行热更代码；项目也可以替换任一 Provider。
+
+运行时源码、程序集、ToolsHub 工具和导出项都归在 ResKit 的 `CodeUpdate/HybridCLR` 扩展下。运行时代码只通过 `IResCodeUpdateProvider` 暴露给应用；没有独立的 HybridCLR Kit 入口。ResKit.Core 和普通资源加载不依赖 HybridCLR。
+
+完整组合流程见 [Resource and code update plugins](../../01-Architecture/ResourceAndCodeUpdatePlugins.md)。
+
+代码 API 位于 `StellarFramework.Res.CodeUpdate.HybridCLR` 命名空间；YooAsset 内容 API 位于 `StellarFramework.Res`。工程内没有单独的 HybridCLRKit 门户，项目通过 ResKit Provider 获取内容更新器和代码运行时。
 
 ## 模块定位
 
-`HybridCLRKit` 只负责 **HybridCLR 代码热更新启动链**。它不负责资源版本管理、catalog 更新、下载器、缓存淘汰或 CDN 发布。
+该 Provider 只负责 **HybridCLR 代码加载启动链**。资源版本管理、catalog 更新、下载器、缓存淘汰和 CDN 发布由项目所选内容更新 Provider 或项目启动层负责。
 
 StellarFramework 当前明确分工：
 
 - `ResKit`：业务侧统一资源 Load / Release / Scope 生命周期。
 - `YooAsset`：推荐的生产内容热更新方案，负责 Package 初始化、版本、Manifest、下载和缓存。
 - `Addressables`：ResKit 的可选加载后端与本地内容构建入口，不承担 StellarFramework 的正式热更新编排。
-- `HybridCLRKit`：读取已经准备好的 Manifest / DLL / AOT metadata，校验后进入热更代码。
+- `ResKit.CodeUpdate.HybridCLR`：从项目传入的 ResKit Scope 读取 Manifest / DLL / AOT metadata，校验后进入热更代码。
 
 因此不存在“大一统 HotUpdateKit”。内容热更与代码热更是两个独立职责。
 
@@ -17,19 +25,19 @@ StellarFramework 当前明确分工：
 
 | 部件 | 负责 | 不负责 |
 | --- | --- | --- |
-| `HybridCLRKit` Runtime | 从已就绪的 ResKit Loader 读取并校验热更 Manifest、DLL 与 AOT metadata；加载 metadata 和代码程序集；调用配置的入口；返回可检查的状态与错误。 | 初始化内容系统、检查或下载 YooAsset 内容版本、缓存/CDN 管理、启动页面和重试策略、业务逻辑及在线修改场景/Prefab。 |
-| `ResKit.YooAsset` / `YooAssetContentUpdater` | 初始化 YooAsset Package，检查版本与 Manifest，下载和缓存资源 Bundle；向 ResKit 提供统一加载接口。 | 执行 C# 程序集加载或决定热更入口。 |
-| `HybridCLRKit.Tools` | 在 Unity Editor 中准备 HybridCLR 代码生成、热更程序集导出与相关诊断。 | Player 运行时更新流程。 |
-| `HotUpdate Publisher` | 编排变更分类、构建、制品校验和发布；通过本地目录或 S3 兼容目标发布不可变文件，并最后更新版本指针。 | Player 中的下载器或程序集加载器；它复用 YooAsset 与 HybridCLR 的构建/运行能力。 |
-| 项目启动层 | 初始化 ResKit/YooAsset，决定提示、同意、等待、重试、回退和何时调用 `HybridCLRKit.RunAsync`。 | 把项目自己的启动、账号或业务策略塞进 HybridCLRKit。 |
+| `ResKit.CodeUpdate.HybridCLR` | 从应用传入的 ResKit Scope 读取并校验热更 Manifest、DLL 与 AOT metadata；加载 metadata 和代码程序集；调用配置的入口；返回状态与错误。 | 初始化内容系统、检查或下载内容版本、缓存/CDN 管理、启动页面和重试策略、业务逻辑及在线修改场景/Prefab。 |
+| `ResKit.YooAsset` / `ResKit.ContentUpdate.YooAsset` | 初始化 YooAsset Package，检查版本与 Manifest，下载和缓存资源 Bundle；提供 YooAsset ResKit Loader。 | 执行 C# 程序集加载或决定热更入口。 |
+| `ResKit.CodeUpdate.HybridCLR.Tools` | 在 Unity Editor 中准备 HybridCLR 代码生成、热更程序集导出与相关诊断。 | Player 运行时更新流程。 |
+| `热更发布器` | 编排变更分类、构建、制品校验和发布；通过本地目录或 S3 兼容目标发布不可变文件，并最后更新版本指针。 | Player 中的下载器或程序集加载器；它复用 YooAsset 与 HybridCLR 的构建/运行能力。 |
+| 项目启动层 | 初始化所选 ResKit Loader 和内容更新 Provider，决定提示、等待、重试、回退，并显式调用代码更新 Provider。 | 把项目自己的启动、账号或业务策略塞进代码更新 Provider。 |
 
 运行顺序是先准备内容，再加载代码：
 
 ```text
-项目启动层 → ResKit.YooAsset 内容更新 → HybridCLRKit 读取 DLL/metadata → 调用 HotUpdate 入口
+项目启动层 → 可选内容更新 Provider → ResKit Scope → 可选代码更新 Provider → HotUpdate 入口
 ```
 
-HybridCLRKit 位于 General 主仓，但在架构依赖图中仍是可选的 `extension / runtime-delivery` Kit。它依赖 ResKit 和 HybridCLR；项目不使用代码热更时，无需导入它。General 项目的 UPM Manifest 为保证整仓可编译会包含该插件依赖，单 Kit 导出则只携带依赖摘要中列出的包。
+`ResKit.CodeUpdate.HybridCLR` 是 ResKit 的可选代码运行时扩展；项目不使用 HybridCLR 代码热更时，无需导入它或 HybridCLR UPM 包。框架的默认完整热更新导出 `Hot Update Full` 同时包含 `ResKit.YooAsset` 与该 Provider。单功能导出只包含 Catalog 声明的依赖。
 
 ## 推荐启动顺序
 
@@ -37,14 +45,17 @@ HybridCLRKit 位于 General 主仓，但在架构依赖图中仍是可选的 `ex
 
 ```text
 启动项目
-  -> YooAssetContentUpdater.UpdateHostPackageAsync(...)
-  -> HybridCLRKit.RunAsync(...)
+  -> 分别注册 YooAsset Loader 和内容更新 Provider
+  -> ResKit 内容更新 Provider.UpdateAsync(...)
+  -> 项目创建 YooAsset ResScope
+  -> ResKit.GetCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult>(HybridCLRResCodeUpdateProvider.ProviderId)
+  -> provider.RunAsync(settings, codeAssets, ...)
   -> 进入热更程序集
 ```
 
-`HybridCLRKit.RunAsync` 开始执行时，内容后端必须已经可用。HybridCLRKit 不会替你初始化 YooAsset 或 Addressables。
+调用 Provider 前，项目所需的资源后端必须已经就绪。代码更新 Provider 不会替你初始化 YooAsset 或 Addressables。
 
-`YooAssetContentUpdater` 属于 `ResKit.YooAsset` Adapter，不属于 HybridCLRKit。它只是把 YooAsset 官方 HostPlayMode 内容更新流程收成一次调用；因此代码热更与内容热更仍然是两个独立职责。
+资源内容更新和代码执行是两个独立 Provider。默认组合由项目启动代码串联，两个扩展之间不相互引用第三方实现类型。
 
 ## 运行时资源
 
@@ -58,7 +69,7 @@ Assets/GameHotUpdate/Metadata/*.dll.bytes
 
 这三类资产应进入 **同一个内容版本**。如果使用 YooAsset，它们应由同一个 ResourcePackage 管理；如果仅做本地验证，也可以让其他 ResKit 后端提供这些地址。
 
-Manifest 不再额外复制到 `StreamingAssets/aa`，也不再由 HybridCLRKit 单独通过 HTTP 下载。这样可以避免 Manifest、DLL 与 metadata 出现跨版本组合。
+Manifest 不再额外复制到 `StreamingAssets/aa`，也不由代码更新 Provider 单独通过 HTTP 下载。Manifest、DLL 与 metadata 通过同一个 ResKit 后端读取，避免出现跨版本组合。
 
 ## HotUpdateSettings
 
@@ -70,13 +81,12 @@ Assets/Resources/HotUpdateSettings.asset
 
 主要配置：
 
-- `ResourceLoaderKey`：HybridCLRKit 读取代码热更资产时使用的 ResKit 后端，默认 `YooAsset`。
 - `HotUpdateManifestKey`：Manifest 的 ResKit 地址。
 - `HotUpdateAssemblyKey`：导出器选择主热更程序集时使用的默认地址。
 - `HotUpdateEntryClass` / `HotUpdateEntryMethod`：导出 Manifest 时使用的默认入口。
 - `AotMetadataKeys`：导出/Authoring 默认 metadata 列表。
 
-HotUpdate Publisher 会把 `AotMetadataKeys` 当作本次运行时需要的 metadata 子集：从所选 BaseRelease 中只导出这些 DLL，并将同一组 key 写入 Manifest。每个 key 都必须能在所选 BaseRelease 中找到对应 metadata。
+热更发布器 会把 `AotMetadataKeys` 当作本次运行时需要的 metadata 子集：从所选 BaseRelease 中只导出这些 DLL，并将同一组 key 写入 Manifest。每个 key 都必须能在所选 BaseRelease 中找到对应 metadata。
 
 运行时真正的 DLL SHA256、入口和 metadata 列表以 `HotUpdateManifest.json` 为事实来源。
 
@@ -105,13 +115,18 @@ HotUpdate Publisher 会把 `AotMetadataKeys` 当作本次运行时需要的 meta
 使用 YooAsset 时，项目启动层可以保持为两步：
 
 ```csharp
-YooAssetContentUpdateResult content =
-    await YooAssetContentUpdater.UpdateHostPackageAsync(
-        new YooAssetContentUpdateOptions
-        {
-            PackageName = "DefaultPackage",
-            MainHostServer = "https://cdn.example.com/game/Windows"
-        });
+YooAssetResKitInstaller.InstallLoader();
+YooAssetContentUpdateInstaller.Install();
+var contentUpdater = ResKit.GetContentUpdateProvider<
+    YooAssetContentUpdateOptions,
+    YooAssetContentUpdateProgress,
+    YooAssetContentUpdateResult>(YooAssetResContentUpdateProvider.ProviderId);
+YooAssetContentUpdateResult content = await contentUpdater.UpdateAsync(
+    new YooAssetContentUpdateOptions
+    {
+        PackageName = "DefaultPackage",
+        MainHostServer = "https://cdn.example.com/game/Windows"
+    });
 
 if (!content.Success)
 {
@@ -119,7 +134,10 @@ if (!content.Success)
     return;
 }
 
-HybridCLRUpdateResult result = await HybridCLRKit.RunAsync();
+using ResScope codeAssets = ResKit.CreateCustomScope(YooAssetResKitInstaller.LoaderKey, "CodeUpdate");
+IResCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult> codeProvider =
+    ResKit.GetCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult>(HybridCLRResCodeUpdateProvider.ProviderId);
+HybridCLRUpdateResult result = await codeProvider.RunAsync(settings, codeAssets);
 if (!result.Success)
 {
     Debug.LogError(result.Error);
@@ -127,7 +145,7 @@ if (!result.Success)
 }
 ```
 
-如果项目不用 YooAsset，可把 `ResourceLoaderKey` 改为已经注册到 ResKit 的其他 Loader key。HybridCLRKit 不需要知道具体后端类型。
+如果项目不用 YooAsset，就用已经注册的其他 ResKit Loader 创建 Scope 并传给 Provider。Provider 不需要知道具体后端类型。
 
 ## 新项目正式接入：从导包到 CDN
 
@@ -143,8 +161,8 @@ StellarFramework-Profile-HotUpdate-Full.unitypackage
 ResKit.Core
 ResKit.YooAsset
 ResKit.Tools
-HybridCLRKit
-HybridCLRKit.Tools
+ResKit.CodeUpdate.HybridCLR
+ResKit.CodeUpdate.HybridCLR.Tools
 ```
 
 Bootstrap 会安装当前 Catalog 声明的第三方依赖。当前正式锁定的关键依赖包括：
@@ -185,7 +203,6 @@ namespace HotUpdate
 `HotUpdateSettings.asset` 默认建议：
 
 ```text
-ResourceLoaderKey      = YooAsset
 HotUpdateManifestKey   = Assets/GameHotUpdate/Manifest/HotUpdateManifest.json
 HotUpdateAssemblyKey   = Assets/GameHotUpdate/Code/HotUpdate.dll.bytes
 HotUpdateEntryClass    = HotUpdate.HotUpdateMain
@@ -237,7 +254,7 @@ https://cdn.example.com/mygame/prod/android/1.0.0/DefaultPackage/
 https://cdn.example.com/mygame/prod/windows/1.0.0/DefaultPackage/
 ```
 
-`MainHostServer` 必须指向**YooAsset 远端文件所在目录本身**。当前 `YooAssetContentUpdater` 的 RemoteServices 只是执行：
+`MainHostServer` 必须指向**YooAsset 远端文件所在目录本身**。YooAsset Provider 的 RemoteServices 执行：
 
 ```text
 MainHostServer + "/" + fileName
@@ -277,8 +294,13 @@ var contentOptions = new YooAssetContentUpdateOptions
     RetryPolicy = new YooAssetContentUpdateRetryPolicy(2, 500)
 };
 
-YooAssetContentUpdateResult content =
-    await YooAssetContentUpdater.UpdateHostPackageAsync(contentOptions);
+YooAssetResKitInstaller.InstallLoader();
+YooAssetContentUpdateInstaller.Install();
+var contentUpdater = ResKit.GetContentUpdateProvider<
+    YooAssetContentUpdateOptions,
+    YooAssetContentUpdateProgress,
+    YooAssetContentUpdateResult>(YooAssetResContentUpdateProvider.ProviderId);
+YooAssetContentUpdateResult content = await contentUpdater.UpdateAsync(contentOptions);
 
 if (!content.Success)
 {
@@ -287,7 +309,11 @@ if (!content.Success)
     return;
 }
 
-HybridCLRUpdateResult code = await HybridCLRKit.RunAsync();
+HotUpdateSettings settings = HotUpdateSettings.LoadOrCreateDefault();
+using ResScope codeAssets = ResKit.CreateCustomScope(YooAssetResKitInstaller.LoaderKey, "CodeUpdate");
+IResCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult> codeProvider =
+    ResKit.GetCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult>(HybridCLRResCodeUpdateProvider.ProviderId);
+HybridCLRUpdateResult code = await codeProvider.RunAsync(settings, codeAssets);
 if (!code.Success)
 {
     Debug.LogError("Code update failed: " + code.Error);
@@ -304,7 +330,7 @@ if (!code.Success)
 - 渠道 / 环境 / CDN 地址选择；
 - 埋点与版本日志。
 
-不要把这些业务决策塞回 HybridCLRKit。
+不要把这些业务决策塞回代码更新 Provider。
 
 ### 7. 一次正常的“热更发布”应该怎么做
 
@@ -323,7 +349,7 @@ if (!code.Success)
   -> 客户端下次启动 RequestPackageVersion
   -> 下载差异文件
   -> ResKit 安装 YooAsset Loader
-  -> HybridCLRKit 校验 SHA / metadata
+  -> ResKit.CodeUpdate.HybridCLR 校验 SHA / metadata
   -> Assembly.Load
   -> 进入 HotUpdateMain.Main
 ```
@@ -436,17 +462,17 @@ Tools Hub 的 `HybridCLR DLL 导出` 负责：
 - 缓存管理。
 - 多 Package。
 
-HybridCLRKit 只在 YooAsset 内容准备完成后，通过 ResKit 读取 Manifest / DLL / metadata。
+ResKit.CodeUpdate.HybridCLR 在内容准备完成后，通过传入的 ResKit Scope 读取 Manifest / DLL / metadata。
 
 ### Addressables
 
 StellarFramework 中的 Addressables Adapter 只提供资源 Load / Release。Tools Hub 只保留本地 Settings / Group 配置和 Player Content 构建。
 
-如果项目自己决定使用 Addressables 官方远端能力，那属于项目层选择；框架不会再把它包装成 HotUpdateKit 或与 HybridCLR 绑定。
+如果项目自己决定使用 Addressables 官方远端能力，那属于项目层选择；ResKit 的内容更新 Provider 和代码更新 Provider 仍保持独立。
 
 ## 生命周期与失败语义
 
-`HybridCLRRunner` 使用一个 `ResScope` 包住本次启动所需的 Manifest、DLL 与 metadata。启动链结束后 Scope 自动释放底层资源句柄。
+`HybridCLRCodeUpdateRuntime` 在一次 Provider 调用期间读取 Manifest、DLL 与 metadata；应用拥有的 `ResScope` 在启动流程结束时释放底层资源句柄。
 
 失败包括：
 
@@ -482,5 +508,5 @@ Android Player 的机器结果必须同时证明 YooAsset 更新成功、ResKit 
 
 ## 相关文档
 
-- [HybridCLRKit 源码文档](HybridCLRKit-代码热更新-源码文档-Guide.md)
+- [ResKit.CodeUpdate.HybridCLR 源码文档](ResKit-CodeUpdate-HybridCLR-源码文档-Guide.md)
 - [ResKit 统一资源说明](../Reskit/ResKit-统一资源-说明文档-Guide.md)

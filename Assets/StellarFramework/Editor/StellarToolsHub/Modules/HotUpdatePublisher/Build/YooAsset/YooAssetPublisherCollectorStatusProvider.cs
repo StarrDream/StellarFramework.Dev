@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using StellarFramework.HybridCLR;
+using StellarFramework.Res.CodeUpdate.HybridCLR;
 using UnityEditor;
 using UnityEngine;
 using YooAsset.Editor;
@@ -13,7 +13,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
     [InitializeOnLoad]
     internal static class YooAssetPublisherCollectorStatusProvider
     {
-        private const string GeneratedRoot = "Assets/HotUpdatePublisherConsumerE2E/Generated";
+        private const string GeneratedRoot = "Assets/HotUpdate/Generated";
         private const string PrefsPrefix = "StellarFramework.HotUpdatePublisher.";
 
         static YooAssetPublisherCollectorStatusProvider()
@@ -31,7 +31,7 @@ namespace StellarFramework.Editor.HotUpdatePublisher
                 if (package == null)
                 {
                     return new HotUpdatePublisherCollectorStatus(false,
-                        $"缺少 Package '{packageName}' 的 YooAsset Collector。点击“配置 / 创建推荐 YooAsset Collector”会新增独立业务 Package，并保留 Verification 配置。");
+                        $"还没有为“{packageName}”创建 YooAsset 资源收集配置。点击“创建或打开 YooAsset 资源收集配置”添加业务资源包；现有验证配置会保留。");
                 }
 
                 if (!package.EnableAddressable)

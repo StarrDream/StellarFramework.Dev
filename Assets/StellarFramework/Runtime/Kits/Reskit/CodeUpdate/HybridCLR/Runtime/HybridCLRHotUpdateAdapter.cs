@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -8,13 +8,13 @@ using Cysharp.Threading.Tasks;
 using StellarFramework.Res;
 using UnityEngine;
 
-namespace StellarFramework.HybridCLR
+namespace StellarFramework.Res.CodeUpdate.HybridCLR
 {
     /// <summary>
     /// HybridCLR 热更生命周期钩子
     /// 职责：提供标准化的代码热更装载与跳转流程，彻底解耦 AOT 环境与 HotUpdate 环境。
     /// </summary>
-    public static class HybridCLRHook
+    internal static class HybridCLRHook
     {
         public enum HotUpdateState
         {
@@ -206,12 +206,22 @@ namespace StellarFramework.HybridCLR
     }
 
 
-    public sealed class HybridCLRCodeHotUpdateStrategy : IHybridCLRCodeUpdateStrategy
+    /// <summary>
+    /// HybridCLR code-runtime adapter for ResKit's vendor-neutral provider registry.
+    /// The application owns the resource Scope and may back it with any registered ResKit loader.
+    /// </summary>
+    public sealed class HybridCLRResCodeUpdateProvider :
+        IResCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult>
     {
-        public UniTask<HybridCLRUpdateResult> RunAsync(HotUpdateSettings settings = null,
-            IProgress<float> progress = null, CancellationToken cancellationToken = default)
+        public const string ProviderId = "HybridCLR";
+
+        public UniTask<HybridCLRUpdateResult> RunAsync(
+            HotUpdateSettings options,
+            ResScope resources,
+            IProgress<float> progress = null,
+            CancellationToken cancellationToken = default)
         {
-            return HybridCLRRunner.RunAsync(settings, progress, cancellationToken);
+            return HybridCLRCodeUpdateRuntime.RunAsync(options, resources, progress, cancellationToken);
         }
     }
 
@@ -221,22 +231,18 @@ namespace StellarFramework.HybridCLR
     /// The runner only asks ResKit for dll.bytes assets, verifies them, loads AOT metadata,
     /// and enters the configured hot-update assembly.
     /// </summary>
-    public static class HybridCLRRunner
+    internal static class HybridCLRCodeUpdateRuntime
     {
         public static HybridCLRUpdateState State { get; private set; } =
             HybridCLRUpdateState.None;
 
         public static string LastError { get; private set; }
 
-        public static UniTask<HybridCLRUpdateResult> RunAsync(HotUpdateSettings settings,
-            Action<float> onProgress, CancellationToken cancellationToken = default)
-        {
-            IProgress<float> progress = onProgress != null ? Progress.Create(onProgress) : null;
-            return RunAsync(settings, progress, cancellationToken);
-        }
-
-        public static async UniTask<HybridCLRUpdateResult> RunAsync(HotUpdateSettings settings = null,
-            IProgress<float> progress = null, CancellationToken cancellationToken = default)
+        internal static async UniTask<HybridCLRUpdateResult> RunAsync(
+            HotUpdateSettings settings,
+            ResScope resources,
+            IProgress<float> progress = null,
+            CancellationToken cancellationToken = default)
         {
             LastError = null;
             State = HybridCLRUpdateState.None;
@@ -258,7 +264,7 @@ namespace StellarFramework.HybridCLR
 
             bool strictProduction = HybridCLRRuntimePolicy.IsStrictProductionRuntime;
 
-            HotUpdateSettingsValidationReport settingsValidation = settings.Validate(strictProduction);
+            HotUpdateSettingsValidationReport settingsValidation = settings.Validate();
             if (!settingsValidation.IsValid)
             {
                 return Fail("HotUpdateSettings validation failed: " + string.Join(" | ", settingsValidation.Errors));
@@ -266,10 +272,11 @@ namespace StellarFramework.HybridCLR
 
             try
             {
-                string loaderKey = settings.ResourceLoaderKey?.Trim();
-                using ResScope resources = ResKit.CreateCustomScope(
-                    loaderKey,
-                    "HybridCLRRunner");
+                if (resources == null)
+                {
+                    return Fail("ResKit resource Scope is null.");
+                }
+
                 IResLoader loader = resources.Loader;
 
                 State = HybridCLRUpdateState.LoadingManifest;
@@ -283,8 +290,8 @@ namespace StellarFramework.HybridCLR
                     return Fail("HotUpdateManifest validation failed: " + string.Join(" | ", manifestValidation.Errors));
                 }
 
-                string manifestSource = $"ResKit:{loaderKey}:{settings.HotUpdateManifestKey}";
-                LogKit.Log($"[HybridCLRRunner] Manifest loaded from {manifestSource}");
+                string manifestSource = $"ResKit:{resources.LoaderKey}:{settings.HotUpdateManifestKey}";
+                LogKit.Log($"[HybridCLRCodeUpdateRuntime] Manifest loaded from {manifestSource}");
                 progress?.Report(0.15f);
 
                 State = HybridCLRUpdateState.LoadingBytes;
@@ -347,6 +354,7 @@ namespace StellarFramework.HybridCLR
                     Success = true,
                     State = State,
                     LoadedAssemblyFullName = HybridCLRHook.LoadedAssemblyFullName,
+                    LoadedAotMetadataKeys = new List<string>(metadataBytes.Keys).ToArray(),
                     Manifest = manifest,
                     ManifestSource = manifestSource
                 };
@@ -500,7 +508,7 @@ namespace StellarFramework.HybridCLR
         {
             State = HybridCLRUpdateState.Failed;
             LastError = string.IsNullOrWhiteSpace(error) ? "Unknown HybridCLR code update error." : error;
-            LogKit.LogError($"[HybridCLRRunner] {LastError}");
+            LogKit.LogError($"[HybridCLRCodeUpdateRuntime] {LastError}");
             return new HybridCLRUpdateResult
             {
                 Success = false,

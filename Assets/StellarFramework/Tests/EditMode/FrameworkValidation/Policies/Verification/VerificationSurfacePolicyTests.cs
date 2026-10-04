@@ -102,7 +102,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             const string runtimePath =
                 "Assets/StellarFrameworkVerification/Runtime/HotUpdateRuntimeVerification.cs";
             const string hybridClrAdapterPath =
-                "Assets/StellarFramework/Runtime/Kits/HybridCLRKit/Runtime/HybridCLRHotUpdateAdapter.cs";
+                "Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR/Runtime/HybridCLRHotUpdateAdapter.cs";
             const string runtimeAssemblyPath =
                 "Assets/StellarFrameworkVerification/Runtime/StellarFramework.Verification.Runtime.asmdef";
             const string androidBuildPath =
@@ -133,7 +133,7 @@ namespace StellarFramework.Tests.FrameworkValidation
 
             Assert.That(editorAssembly, Is.Not.Null);
             CollectionAssert.Contains(editorAssembly.references, "HybridCLR.Editor");
-            CollectionAssert.Contains(editorAssembly.references, "StellarFramework.ToolsHub.HybridCLRKit.Editor");
+            CollectionAssert.Contains(editorAssembly.references, "StellarFramework.ToolsHub.ResKit.CodeUpdate.HybridCLR.Editor");
             Assert.That(runtimeAssembly, Is.Not.Null);
             CollectionAssert.DoesNotContain(runtimeAssembly.references, "HybridCLR.Editor");
             CollectionAssert.DoesNotContain(runtimeAssembly.references, "YooAsset.Editor");
@@ -151,7 +151,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(runtime, Does.Contain("AndroidJavaClass(\"com.unity3d.player.UnityPlayer\")"));
             Assert.That(runtime, Does.Contain("HotUpdateVerificationPaths.AndroidVerifyIntentExtra"));
             Assert.That(runtime, Does.Contain("aotMetadataLoadSucceeded"));
-            Assert.That(runtime, Does.Contain("HybridCLRHook.AOTMetaAssemblyFiles"));
+            Assert.That(runtime, Does.Contain("codeUpdate.LoadedAotMetadataKeys"));
             Assert.That(runtime, Does.Contain("[StellarHotUpdateVerificationChunk] "));
             Assert.That(runtime, Does.Contain("Convert.ToBase64String(Encoding.UTF8.GetBytes(json))"));
             Assert.That(runtime, Does.Contain("[StellarHotUpdateVerificationStage] "));

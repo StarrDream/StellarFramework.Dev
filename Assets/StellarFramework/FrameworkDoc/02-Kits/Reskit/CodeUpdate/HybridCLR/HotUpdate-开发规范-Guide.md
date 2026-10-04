@@ -7,10 +7,10 @@
 运行时保持现有调用链：
 
 ```text
-YooAsset → YooAssetContentUpdater → ResKit.YooAsset → HybridCLRKit → HotUpdate Assembly
+项目启动层 → ResKit.YooAsset 内容更新 Provider → YooAsset ResScope → ResKit.CodeUpdate.HybridCLR Provider → HotUpdate Assembly
 ```
 
-HybridCLRKit 不直接依赖 YooAsset。Publisher 是 Editor-only 工具，不进入 Player，也不实现第二套 DLL 加载器、资源下载器或资源更新器。
+ResKit.CodeUpdate.HybridCLR 不直接依赖 YooAsset；它通过项目传入的 ResKit Scope 读取代码载荷。Publisher 是 Editor-only 工具，不进入 Player，也不实现第二套 DLL 加载器、资源下载器或资源更新器。
 
 HotUpdate 可以调用 Base App 暴露的稳定 API。Base App 程序集不得引用 HotUpdate 程序集，也不得在 Base App 类型中声明 HotUpdate 类型字段、参数或返回值。Base App 在安装时必须能独立编译和启动。
 

@@ -7,7 +7,7 @@
 - 每个可导出 Profile 都声明自己的源路径、依赖 Profile、UPM 依赖和明确排除的能力。
 - Runtime Profile 通过 `documentationPaths` 显式声明随独立包交付的正式 Guide；文档不再依赖开发者回到母仓库自行寻找。
 - Runtime Kit Profile 额外声明 `tier` 和 `category`，用于 Foundation / Extension / Adapter 的架构约束；不会改变实际依赖闭包。Export 的用户导航使用独立的“基础功能 / 完整功能 / 扩展功能”交付视角，不直接暴露 tier。
-- General / Extensions 是源码发布仓归属；Foundation / Extension / Adapter 是 Kit 的依赖层级。HybridCLRKit 随 General 发布，但仍是可选的 Extension-tier Runtime Kit。
+- General / Extensions 是源码发布仓归属；Foundation / Extension / Adapter 是 Kit 的依赖层级。`ResKit.CodeUpdate.HybridCLR` 随 General 发布，是可选的 ResKit 代码更新扩展。
 - 每个原子 Profile 还声明 `maturity=stable / rc / experimental`。`availability` 只表示能否安装/导出，`maturity` 才表示生产成熟度。
 - 导出时会自动计算依赖闭包；开发者只选择目标 Kit，不必手动猜测依赖顺序。
 - 每个 Kit 包均采用 Bootstrap + Payload 两段式导入：先导入无第三方依赖的安装器，再安装该包依赖闭包中缺失的 UPM 包，最后导入 Kit 源码 Payload。没有 UPM 依赖的 Kit 会直接进入 Payload 导入阶段。
@@ -28,12 +28,18 @@ Recommended Profile 是“常见项目目标的推荐组合”，不是新的 Ki
 | 推荐组合 | 入口 Profile | 适合场景 | 不强制包含 |
 | --- | --- | --- | --- |
 | Localization Complete | `localizationkit.tools + localizationkit.tmp.tools` | 完整本地化：UGUI/TMP Scanner/Binding、Workspace、Translation Matrix、JSON/CSV、Validator、ToolsHub | SettingsKit、UIKit、ResKit、热更 |
-| ResKit Complete | `reskit.tools` | 完整 ResKit Core + AssetsMap + 资源审计/生成工具 | AssetBundle、Addressables、YooAsset、HybridCLR |
+| ResKit 完整开发套件 | `reskit.resources + reskit.tools` | ResKit.Core、Resources 默认加载后端、AssetsMap 与资源工具 | AssetBundle、Addressables（AA）、YooAsset、HybridCLR |
+| ResKit（Resources） | `reskit.resources` | 只使用 Unity Resources 加载资源 | AssetBundle、Addressables（AA）、YooAsset |
+| ResKit（AssetBundle） | `reskit.assetbundle` | 只使用 AssetBundle 加载资源 | Resources、Addressables（AA）、YooAsset |
+| ResKit（Addressables / AA） | `reskit.addressables` | 只使用 Addressables 加载资源 | Resources、AssetBundle、YooAsset |
+| ResKit（Resources + AssetBundle） | `reskit.resources + reskit.assetbundle` | 同时接入 Resources 和 AB，按资源选择加载后端 | Addressables（AA）、YooAsset |
 | UIAdaptationKit Complete | `uiadaptation.tools` | 独立 UGUI 多机型适配 + SafeArea/Cutout/Fallback + Preview/Validator | UIKit、ResKit、SingletonKit |
 | UIKit Complete | `uikit.reskit + uikit.tools + uiadaptation.tools + reskit.tools` | 完整 UIKit Runtime/Tooling + ResKit + 独立 UIAdaptationKit | Addressables、YooAsset、HybridCLR |
-| Hot Update Full | `reskit.yooasset + reskit.tools + hybridclrkit.tools` | 需要资源内容更新 + C# 代码热更的项目；组合随 General 发布 | Addressables |
+| Hot Update Full | `reskit.yooasset + reskit.contentupdate.yooasset + reskit.tools + reskit.codeupdate.hybridclr.tools` | 需要 YooAsset 资源内容更新 + HybridCLR C# 代码热更的项目 | Addressables（AA） |
 
-如果项目已经拥有自己的 UI、Settings、资源系统，只缺某一个能力，不要机械选择完整组合。直接选择对应原子 Profile；`HybridCLRKit` 在 General 的可选 Kit 中提供，不会被其他 Profile 自动引入。
+如果项目已经拥有自己的 UI、Settings、资源系统，只缺某一个能力，不要机械选择完整组合。直接选择对应原子 Profile；`ResKit.CodeUpdate.HybridCLR` 不会被普通 ResKit 或其他资源后端自动引入。
+
+ResKit 导出器提供 Resources、AssetBundle、Addressables（AA）和 Resources + AssetBundle 四种常用组合。也可以在 Kit 列表中勾选多个 Adapter 后合并导出；公共 ResKit.Core、SingletonKit 和 AssetsMap 依赖会自动去重。组合包会注册所选的所有加载后端；单独使用 AB 时可将默认后端设为 `AssetBundle`，单独使用 AA 时可设为 `Custom / Addressables`，也可以为个别资源创建指定后端的 Scope。
 
 ## 单文件
 
@@ -90,11 +96,13 @@ Recommended Profile 是“常见项目目标的推荐组合”，不是新的 Ki
 
 | 目标包 | 自动包含 | 外部 UPM | 明确不包含 |
 | --- | --- | --- | --- |
-| ResKit.Core | LogKit、PoolKit | UniTask | SingletonKit、Generated.AssetMap、ToolsHub、AssetBundle、Addressables、HybridCLR、代码热更 |
+| ResKit.Core | LogKit、PoolKit | UniTask | Resources、AssetBundle、Addressables、YooAsset、HybridCLR、编辑器工具 |
+| ResKit.Resources | ResKit.Core + Resources Loader | UniTask | AssetBundle、Addressables、YooAsset、HybridCLR |
 | ResKit.Tools | ResKit.Core + Generated.AssetMap + ToolsHub.Core + AssetsMap/资源审计工具 | UniTask | Player Runtime |
 | ResKit.AssetBundle | ResKit.Core + SingletonKit + Generated.AssetMap + AB Loader | UniTask | ToolsHub、Addressables、HybridCLR、代码热更 |
 | ResKit.AssetBundle.Tools | ResKit.AssetBundle + ToolsHub.Core + AB 构建工具 | UniTask | Player Runtime |
 | ResKit.Addressables | ResKit.Core + Addressables Loader | UniTask、Addressables | HybridCLR、代码热更 |
+| ResKit.ContentUpdate.YooAsset | ResKit.Core + YooAsset 内容更新 Provider | UniTask、YooAsset | YooAsset Loader、HybridCLR |
 | UIKit.Core | Runtime.Core、SingletonKit | UniTask、UGUI | PoolKit、Newtonsoft Json、ToolsHub、ResKit、AA、HybridCLR、代码热更 |
 | UIKit.Tools | UIKit.Core + ToolsHub.Core + CodeGen/Inspector/UIKit Hub | UniTask、UGUI | Player Runtime |
 | UIKit.ResKitAdapter | UIKit.Core + ResKit.Core + ResKit UI Adapter | UniTask、UGUI | Addressables、HybridCLR、代码热更 |
@@ -125,12 +133,15 @@ Tank Arena 展示一局可玩的跨 Kit 业务流程；它不替代逐 Kit 指�
 
 | 目标包 | 自动包含 | 外部 UPM | 明确不包含 |
 | --- | --- | --- | --- |
-| ResKit.Addressables | ResKit.Core + Addressables Loader | UniTask、Addressables | HybridCLR、YooAsset、catalog/download 热更新编排 |
-| ResKit.YooAsset | ResKit.Core + YooAsset Loader | UniTask、YooAsset | Addressables、HybridCLR、Package 初始化/版本/下载编排 |
-| HybridCLRKit | ResKit.Core + HybridCLR Runtime | UniTask、HybridCLR | ToolsHub、Addressables、YooAsset、HttpKit、内容版本/下载流程 |
-| HybridCLRKit.Tools | HybridCLRKit + ToolsHub.Core + DLL/AOT/Manifest 导出工具 | UniTask、HybridCLR | Player Runtime |
+| ResKit.Resources | ResKit.Core + Resources Loader | UniTask | AssetBundle、Addressables、YooAsset、HybridCLR |
+| ResKit.AssetBundle | ResKit.Core + AB Loader | UniTask | Resources、Addressables、YooAsset、HybridCLR |
+| ResKit.Addressables（AA） | ResKit.Core + Addressables Loader | UniTask、Addressables | Resources、AssetBundle、YooAsset、HybridCLR |
+| ResKit.YooAsset | ResKit.Core + YooAsset Loader | UniTask、YooAsset | Addressables、HybridCLR、内容版本/下载流程 |
+| ResKit.ContentUpdate.YooAsset | ResKit.Core + YooAsset 内容更新 Provider | UniTask、YooAsset | Loader 注册、HybridCLR |
+| ResKit.CodeUpdate.HybridCLR | ResKit.Core + HybridCLR Runtime | UniTask、HybridCLR | ToolsHub、Addressables、YooAsset、HttpKit、内容版本/下载流程 |
+| ResKit.CodeUpdate.HybridCLR.Tools | ResKit.CodeUpdate.HybridCLR + ToolsHub.Core + DLL/AOT/Manifest 导出工具 | UniTask、HybridCLR | Player Runtime |
 
-未导入 `HybridCLRKit` 的项目不会因为 ToolsHub、ResKit、Addressables 或 YooAsset Adapter 被要求安装 HybridCLR。HybridCLRKit 只通过 ResKit Loader key 读取 Manifest / DLL / metadata，因此不依赖具体资源 SDK。HybridCLR 工具会检查 `HybridCLR.Editor` 程序集，插件不在时不会显示。
+未选择 `ResKit.CodeUpdate.HybridCLR` 的项目不会因为 ToolsHub、ResKit、Addressables 或 YooAsset Adapter 被要求安装 HybridCLR。该 Provider 通过调用方传入的 ResKit Scope 读取 Manifest / DLL / metadata，因此不依赖具体资源 SDK。编辑器工具会检查 `HybridCLR.Editor` 程序集，插件不在时不会显示。
 
 ## Tools Hub 自动识别
 

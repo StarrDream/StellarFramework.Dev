@@ -1,9 +1,9 @@
 {
-    "name": "StellarFramework.ToolsHub.HybridCLRKit.Editor",
+    "name": "StellarFramework.ToolsHub.ResKit.CodeUpdate.HybridCLR.Editor",
     "rootNamespace": "",
     "references": [
         "StellarFramework.ToolsHub.Editor",
-        "StellarFramework.HybridCLRKit"
+        "StellarFramework.ResKit.CodeUpdate.HybridCLR"
     ],
     "includePlatforms": ["Editor"],
     "excludePlatforms": [],

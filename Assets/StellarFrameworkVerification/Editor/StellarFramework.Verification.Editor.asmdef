@@ -4,8 +4,8 @@
     "references": [
         "StellarFramework.ToolsHub.Editor",
         "StellarFramework.ToolsHub.Addressables.Editor",
-        "StellarFramework.ToolsHub.HybridCLRKit.Editor",
-        "StellarFramework.HybridCLRKit",
+        "StellarFramework.ToolsHub.ResKit.CodeUpdate.HybridCLR.Editor",
+        "StellarFramework.ResKit.CodeUpdate.HybridCLR",
         "HybridCLR.Editor",
         "StellarFramework.ResKit",
         "StellarFramework.ResKit.YooAsset",

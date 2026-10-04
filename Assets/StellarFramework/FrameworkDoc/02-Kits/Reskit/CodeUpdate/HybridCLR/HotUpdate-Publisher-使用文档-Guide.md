@@ -1,16 +1,20 @@
-# HotUpdate Publisher 使用文档
+# 热更发布器（HotUpdate Publisher） 使用文档
 
-HotUpdate Publisher 是 Unity Editor 内的构建与发布编排工具。它根据 Git、程序集边界和 Unity 资产信息判断变更风险，复用现有 HybridCLR/YooAsset 构建与验证能力，再通过可替换的发布目标安全发布不可变文件和 PackageVersion 指针。
+热更发布器（HotUpdate Publisher） 是 Unity Editor 内的构建与发布编排工具。它根据 Git、程序集边界和 Unity 资产信息判断变更风险，复用现有 HybridCLR/YooAsset 构建与验证能力，再通过可替换的发布目标安全发布不可变文件和 PackageVersion 指针。
 
 Publisher 不负责客户端下载、缓存、资源生命周期或 DLL 加载。客户端继续使用：
 
 ```text
-YooAssetContentUpdater.UpdateHostPackageAsync(...)
+ResKit.GetContentUpdateProvider(...).UpdateAsync(...)
     ↓
 ResKit.YooAsset
     ↓
-HybridCLRKit.RunAsync(...)
+ResKit.GetCodeUpdateProvider<HotUpdateSettings, HybridCLRUpdateResult>(HybridCLRResCodeUpdateProvider.ProviderId)
+    ↓
+provider.RunAsync(settings, codeAssets, ...)
 ```
+
+新工程的 `Development` 环境默认写入 `BuildArtifacts/HotUpdate/Local`，客户端地址指向本机磁盘 `file:///` 目录。Unity Editor 或同一台 Windows 电脑上的 Player 可以直接从该磁盘目录读取；Android 设备无法访问开发机的 Windows 文件路径，需要使用设备可达的 HTTP 服务。验证 HTTP Range 或断点续传时使用验证工程的 HTTP 测试服务；部署到其他设备或 Production 时，为相应环境配置可达的 HTTP(S) 地址，Production 必须使用 HTTPS。
 
 ## 当前实现状态
 
@@ -22,7 +26,7 @@ Build 会依次执行变更 Preflight / Classify、HybridCLR Compile、DLL/AOT/M
 
 ## Base App 与 HotUpdate 边界
 
-Base App 包含启动和稳定运行所需的框架、平台 Adapter、原生 SDK Wrapper、网络/存储后端、Bootstrap、Updater、ResKit、YooAsset Adapter、HybridCLR Loader 及底层 Flow Runtime。Base 程序集不得引用具体 HotUpdate 类型。
+Base App 包含启动和稳定运行所需的框架、平台 Adapter、原生 SDK Wrapper、网络/存储后端、Bootstrap、Updater、ResKit、YooAsset Adapter、可选 HybridCLR Provider 及底层 Flow Runtime。Base 程序集不得引用具体 HotUpdate 类型。
 
 HotUpdate 适合承载 Gameplay、Mission、Stage、业务 Flow、NPC 行为、UI 业务逻辑、活动和数值规则。HotUpdate 可以依赖 Base App 暴露的稳定 API；Base App 不得反向依赖 HotUpdate。
 
@@ -62,13 +66,16 @@ HotUpdate MonoBehaviour Prefab/Scene 必须由 YooAsset 远端包管理，并在
 
 ## 首次配置
 
-1. 在目标平台和 IL2CPP 设置匹配时创建 BaseRelease；ToolsHub 会调用 HybridCLR Generate/All，并保存 Unity/HybridCLR/YooAsset 版本、Scripting Backend、AOT metadata 文件及 SHA256。切换平台或设置后需等 Unity 完成导入，再执行创建。
-2. 在 `Assets/Resources/HotUpdateSettings.asset` 的 `AotMetadataKeys` 中选择运行时需要的 AOT metadata。Publisher 只导出这些项，并在所选 BaseRelease 中逐项校验；推荐 Collector 会按同一设置生成必需的收集路径。
-3. 在 ToolsHub 首次配置中创建独立 YooAsset 业务 Package，或在现有业务 Collector 中加入面板列出的全部 Publisher 产物收集路径。业务 Package 必须启用 Addressable，且运行时代码与 Collector 使用的地址规则一致；推荐 Collector 使用 `AddressByFileName`，通过 `HotUpdateBehavior` 等资源地址加载。不要使用 `StellarHotUpdateVerification` 作为生产 Collector。
-4. 在 ToolsHub 的 Server 区分别设置 Development、Staging、Production 的 MainHostServer、FallbackHostServer、RemoteRoot、PublishTarget 和 Credential Profile Name。使用 LocalFolder 时，为每个环境选择已挂载目录的 Local Folder Root；该路径与非秘密 profile 元数据一起存放在项目级 EditorPrefs。
-5. MainHostServer 必须直接指向 YooAsset Package 文件目录；不要重复追加 Package 名或 RemoteRoot。
-6. LocalFolder 的根目录通过 Server 区的文件夹选择器配置；Profile 的 RemoteRoot 会追加到该根目录下。S3-Compatible 凭证由环境变量 Provider 读取，不写入 Assets、EditorPrefs 或 Git。`CredentialProfileName=ProductionCdn` 对应变量 `STELLAR_HOTUPDATE_PRODUCTIONCDN`；变量内容是 JSON，必须含 `accessKeyId`、`secretAccessKey`，`sessionToken` 可选。
-7. 使用 Dry Run 对目标环境执行发布前检查和远端文件完整性验证。Production 主/回退 Host 必须使用 HTTPS。
+1. Development 默认使用本机磁盘目录 `BuildArtifacts/HotUpdate/Local`；新用户无需先购买或配置 CDN。ToolsHub 的 `Main Host Server` 会指向该目录加 `Remote Root` 得到的 `file:///` 地址。`Use Local Disk` 可在修改目录后重新生成这个地址。
+2. 在目标平台和 IL2CPP 设置匹配时创建 BaseRelease；ToolsHub 会调用 HybridCLR Generate/All，并保存 Unity/HybridCLR/YooAsset 版本、Scripting Backend、AOT metadata 文件及 SHA256。切换平台或设置后需等 Unity 完成导入，再执行创建。
+3. 在 `Assets/Resources/HotUpdateSettings.asset` 的 `AotMetadataKeys` 中选择运行时需要的 AOT metadata。Publisher 只导出这些项，并在所选 BaseRelease 中逐项校验；推荐 Collector 会按同一设置生成必需的收集路径。
+4. 在 ToolsHub 首次配置中创建独立 YooAsset 业务 Package，或在现有业务 Collector 中加入面板列出的全部 Publisher 产物收集路径。业务 Package 必须启用 Addressable，且运行时代码与 Collector 使用的地址规则一致；推荐 Collector 使用 `AddressByFileName`，通过 `HotUpdateBehavior` 等资源地址加载。不要使用 `StellarHotUpdateVerification` 作为生产 Collector。
+5. Staging 和 Production 在 ToolsHub 的 Server 区单独填写 MainHostServer、FallbackHostServer、RemoteRoot、PublishTarget 和 Credential Profile Name。使用 LocalFolder 时，为目标环境选择已挂载目录的 Local Folder Root；该路径与非秘密 profile 元数据一起存放在项目级 EditorPrefs。
+6. MainHostServer 必须直接指向 YooAsset Package 文件目录；不要重复追加 Package 名或 RemoteRoot。Development 的本机目录地址由 Local Folder Root + Remote Root 组成。
+7. LocalFolder 的根目录通过 Server 区的文件夹选择器配置；Profile 的 RemoteRoot 会追加到该根目录下。S3-Compatible 凭证由环境变量 Provider 读取，不写入 Assets、EditorPrefs 或 Git。`CredentialProfileName=ProductionCdn` 对应变量 `STELLAR_HOTUPDATE_PRODUCTIONCDN`；变量内容是 JSON，必须含 `accessKeyId`、`secretAccessKey`，`sessionToken` 可选。
+8. 使用 Dry Run 对目标环境执行发布前检查和内容完整性验证。Production 主/回退 Host 必须使用 HTTPS。
+
+Development 使用 `file:///` 直接从当前电脑磁盘读取，不支持 HTTP Range 断点续传。断点续传单独由本机 Range 验证流程检查。Android 设备无法直接访问开发电脑的 `file:///` 路径；设备验证应使用随验证工具启动的本地 HTTP 服务。
 
 推荐远端布局：
 

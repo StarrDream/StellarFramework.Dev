@@ -72,21 +72,27 @@ Catalog 使用 `tier` / `category` 描述架构职责，并用 `recommendedProfi
 | FlowKit.Core | 纯 C# Graph/Compiler/Plan、Runner、Timer、Signal、State、Blackboard、Polling、Operation、Parallel/Race/Join 与 Snapshot | UnityEngine、UniTask、Addressables、HybridCLR、UI、资源和业务对象 |
 | FlowKit.UnityIntegration | FlowHost、稳定 FlowBinding、JSON Graph 入口 | UniTask、Addressables、HybridCLR、ResKit、ToolsHub |
 | FlowKit.ToolsHub | ToolsHub 内嵌 FlowKit 编辑器、Graph Validator、运行时诊断 | Editor-only；不进入玩家 Runtime；无独立 FlowKit 顶层菜单 |
-| ResKit.Core | LogKit、PoolKit、Resources/Custom Loader、Scope/引用计数 | SingletonKit、Generated.AssetMap、ToolsHub、Addressables、YooAsset、HybridCLR |
+| ResKit.Core | LogKit、PoolKit、加载器注册、Scope/引用计数与生命周期管理；不内置具体资源后端 | Resources、AssetBundle、Addressables、YooAsset、ToolsHub、HybridCLR |
+| ResKit.Resources | ResKit.Core + Unity Resources 加载适配器 | AssetBundle、Addressables、YooAsset、HybridCLR |
 | ResKit.Tools | ResKit.Core、Generated.AssetMap、ToolsHub.Core、AssetsMap Generator、资源驻留/引用计数审计 | Player Runtime |
 | ResKit.AssetBundle | ResKit.Core、SingletonKit、Generated.AssetMap | ToolsHub；AssetBundle 构建工具独立在 ResKit.AssetBundle.Tools |
 | ResKit.Addressables | ResKit.Core + Addressables Load/Release Adapter | HybridCLR、YooAsset、catalog/download 热更新编排 |
 | ResKit.YooAsset | ResKit.Core、UniTask、YooAsset 2.3.x Adapter | Addressables、HybridCLR、YooAsset 启动/版本/下载流程 |
-| HybridCLRKit | ResKit.Core、HybridCLR Runtime、AOT Metadata/HotUpdate Assembly 加载 | ToolsHub、Addressables、YooAsset、HttpKit、内容版本/下载流程 |
-| HybridCLRKit.Tools | HybridCLRKit、ToolsHub.Core、DLL/AOT/Manifest 导出与诊断工具 | Player Runtime |
+| ResKit.ContentUpdate.YooAsset | ResKit.Core、UniTask、YooAsset 内容版本/更新 Provider | 具体资源加载后端、HybridCLR |
+| ResKit.CodeUpdate.HybridCLR | ResKit.Core、HybridCLR Runtime、AOT Metadata/HotUpdate Assembly 加载 | ToolsHub、Addressables、YooAsset、HttpKit、内容版本/下载流程 |
+| ResKit.CodeUpdate.HybridCLR.Tools | ResKit.CodeUpdate.HybridCLR、ToolsHub.Core、DLL/AOT/Manifest 导出与诊断工具 | Player Runtime |
 | UIAdaptationKit.Core | UGUI、SafeArea、System Cutouts、PreciseCutout、Automatic Fallback、Aspect/Orientation Breakpoint、Layout Variant | UIKit、ResKit、SingletonKit、ToolsHub |
 | UIAdaptationKit.Tools | UIAdaptationKit.Core、ToolsHub Preview/Validator、一键独立 UIRoot、Mode/Fallback/Effective 诊断 | Player Runtime、UIKit |
 | UIKit.Core | Runtime.Core、SingletonKit、UniTask、UGUI、Resources/Custom Load Strategy | PoolKit、Newtonsoft、ToolsHub、ResKit |
 | UIKit.Tools | UIKit.Core、ToolsHub.Core、CodeGen、Panel Inspector、UIKit Hub | Player Runtime |
-| Recommended: ResKit Complete | `reskit.tools`，依赖闭包自动补齐 ResKit.Core / PoolKit / LogKit / Generated.AssetMap / ToolsHub.Core | 具体资源后端 |
+| Recommended: ResKit Complete | `reskit.resources + reskit.tools`，依赖闭包自动补齐 ResKit.Core / PoolKit / LogKit / Generated.AssetMap / ToolsHub.Core | AssetBundle、Addressables、YooAsset |
+| Recommended: ResKit（Resources） | `reskit.resources`，单独交付 Resources 后端及 ResKit.Core 依赖闭包 | AssetBundle、Addressables、YooAsset |
+| Recommended: ResKit（AssetBundle） | `reskit.assetbundle`，单独交付 AssetBundle 后端及其生成资源/单例依赖 | Resources、Addressables、YooAsset |
+| Recommended: ResKit（Addressables / AA） | `reskit.addressables`，单独交付 Addressables 后端及 ResKit.Core 依赖闭包 | Resources、AssetBundle、YooAsset |
+| Recommended: ResKit（Resources + AssetBundle） | `reskit.resources + reskit.assetbundle`，合并时共享依赖自动去重 | Addressables、YooAsset |
 | Recommended: UIAdaptationKit Complete | `uiadaptation.tools`，独立适配 Runtime + ToolsHub 开发体验 | UIKit、ResKit、SingletonKit |
 | Recommended: UIKit Complete | `uikit.reskit + uikit.tools + uiadaptation.tools + reskit.tools`，组合 UIKit、ResKit 与独立多尺寸适配完整开发体验 | 第三方资源后端、HybridCLR |
-| Recommended: Hot Update Full | `reskit.yooasset + reskit.tools + hybridclrkit.tools`，依赖闭包自动补齐 ResKit.Core / PoolKit / LogKit / Generated.AssetMap / ToolsHub.Core / HybridCLRKit | Addressables |
+| Recommended: Hot Update Full | `reskit.yooasset + reskit.tools + reskit.codeupdate.hybridclr.tools`，依赖闭包自动补齐 ResKit.Core / PoolKit / LogKit / Generated.AssetMap / ToolsHub.Core / ResKit.CodeUpdate.HybridCLR | Addressables |
 
 完整 Profile、依赖闭包与 UPM 要求以 [KitDistributionCatalog.json](KitDistributionCatalog.json) 为准。
 
@@ -108,7 +114,7 @@ Demo / Verification 边界：
 - 完整 PlayMode：11 项完成，11 通过、0 失败、0 跳过；覆盖 EventKit、BindableKit、SaveKit、TimeKit、UIKit/ResKit 的真实 Runtime 行为。
 - Package Publisher 路径边界：Base / Full payload 的框架根与 GameHotUpdate 根均使用目录边界判断；`StellarFrameworkVerification`、`StellarFrameworkBackup`、`StellarFramework2`、`GameHotUpdateBackup` 的 sibling-prefix 回归均被拒绝，实际 Full payload 导出不含 Verification 条目。
 - 已实际导出并核对依赖说明：AudioKit.Core / ResKitAdapter、SettingsKit.Core / UnityAdapters / AudioKitAdapter、ConfigKit.Core / NewtonsoftJson。
-- HybridCLRKit 的运行时与分发边界由独立策略测试覆盖；目标平台 IL2CPP 的真实内容更新、metadata 加载和入口执行仍作为发布 Gate。
+- ResKit.CodeUpdate.HybridCLR 的运行时与分发边界由独立策略测试覆盖；目标平台 IL2CPP 的真实内容更新、metadata 加载和入口执行仍作为发布 Gate。
 - FlowKit 当前以 Core / Editor 行为测试、Graph Validator 与 ToolsHub 入口作为自动验证面；V1 Snapshot 仅覆盖 quiescent 终态与 Persistent Blackboard/State，不提供中途 continuation 恢复。空白工程导入、Player/IL2CPP 和真实外部 Operation 仍需按目标平台执行。
 - SaveKit.Core：EditMode 覆盖 Slot/Section 安全、Container、Checksum、事务、Backup、Migration、Missing/Unknown、Restore DAG、跨 DTO 类型链和未来版本提前失败；Newtonsoft Adapter 已完成 Round Trip 验证。
 - SaveKit：已完成 100000 CropSaveRecord End-to-End Save/Load 基准；ToolsHub 已验证 Raw/Hex 有界预览、Migration Type Chain 和只读 Dry Run 入口。

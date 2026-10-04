@@ -69,7 +69,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             AssertProfile(catalog, "uikit.core", "extension", "presentation");
             AssertProfile(catalog, "uiadaptation.core", "extension", "presentation");
             AssertProfile(catalog, "uikit.adaptation", "extension", "presentation");
-            AssertProfile(catalog, "hybridclrkit", "extension", "runtime-delivery");
+            AssertProfile(catalog, "reskit.codeupdate.hybridclr", "extension", "runtime-delivery");
 
             AssertMaturity(catalog, "gridkit", "stable");
             AssertMaturity(catalog, "runtime.tools", "stable");
@@ -77,8 +77,8 @@ namespace StellarFramework.Tests.FrameworkValidation
             AssertMaturity(catalog, "uikit.core", "stable");
             AssertMaturity(catalog, "reskit.addressables", "rc");
             AssertMaturity(catalog, "reskit.yooasset", "stable");
-            AssertMaturity(catalog, "hybridclrkit", "stable");
-            AssertMaturity(catalog, "hybridclrkit.tools", "stable");
+            AssertMaturity(catalog, "reskit.codeupdate.hybridclr", "stable");
+            AssertMaturity(catalog, "reskit.codeupdate.hybridclr.tools", "stable");
         }
 
         [Test]
@@ -152,7 +152,7 @@ namespace StellarFramework.Tests.FrameworkValidation
 
             RecommendedProfileDocument resKit =
                 catalog.recommendedProfiles.Single(profile => profile.id == "reskit.complete");
-            Assert.That(resKit.profileIds, Is.EqualTo(new[] { "reskit.tools" }));
+            Assert.That(resKit.profileIds, Is.EqualTo(new[] { "reskit.resources", "reskit.tools" }));
             Assert.That(resKit.deliveryGroup, Is.EqualTo("complete"));
             Assert.That(resKit.output, Is.EqualTo("StellarFramework-Profile-ResKit-Complete.unitypackage"));
 
@@ -170,7 +170,8 @@ namespace StellarFramework.Tests.FrameworkValidation
                 "uikit.reskit",
                 "uikit.tools",
                 "uiadaptation.tools",
-                "reskit.tools"
+                "reskit.tools",
+                "reskit.resources"
             }));
             Assert.That(ui.deliveryGroup, Is.EqualTo("complete"));
             Assert.That(ui.output, Is.EqualTo("StellarFramework-Profile-UIKit-Complete.unitypackage"));
@@ -178,7 +179,13 @@ namespace StellarFramework.Tests.FrameworkValidation
             RecommendedProfileDocument hotUpdate =
                 catalog.recommendedProfiles.Single(profile => profile.id == "hotupdate.full");
             Assert.That(hotUpdate.profileIds,
-                Is.EqualTo(new[] { "reskit.yooasset", "reskit.tools", "hybridclrkit.tools" }));
+                Is.EqualTo(new[]
+                {
+                    "reskit.yooasset",
+                    "reskit.contentupdate.yooasset",
+                    "reskit.tools",
+                    "reskit.codeupdate.hybridclr.tools"
+                }));
             Assert.That(hotUpdate.deliveryGroup, Is.EqualTo("extension"));
             Assert.That(hotUpdate.output, Is.EqualTo("StellarFramework-Profile-HotUpdate-Full.unitypackage"));
 
@@ -195,20 +202,36 @@ namespace StellarFramework.Tests.FrameworkValidation
         {
             CatalogDocument catalog = ReadCatalog();
             ProfileDocument resCore = catalog.profiles.Single(profile => profile.id == "reskit.core");
+            ProfileDocument resResources = catalog.profiles.Single(profile => profile.id == "reskit.resources");
             ProfileDocument resTools = catalog.profiles.Single(profile => profile.id == "reskit.tools");
+            ProfileDocument resContentUpdate = catalog.profiles.Single(profile => profile.id == "reskit.contentupdate.yooasset");
             ProfileDocument uiCore = catalog.profiles.Single(profile => profile.id == "uikit.core");
             ProfileDocument uiTools = catalog.profiles.Single(profile => profile.id == "uikit.tools");
-            ProfileDocument hybridCore = catalog.profiles.Single(profile => profile.id == "hybridclrkit");
-            ProfileDocument hybridTools = catalog.profiles.Single(profile => profile.id == "hybridclrkit.tools");
+            ProfileDocument hybridCore = catalog.profiles.Single(profile => profile.id == "reskit.codeupdate.hybridclr");
+            ProfileDocument hybridTools = catalog.profiles.Single(profile => profile.id == "reskit.codeupdate.hybridclr.tools");
 
             Assert.That(resCore.sourcePaths, Is.EqualTo(new[] { "Assets/StellarFramework/Runtime/Kits/Reskit" }));
+            Assert.That(resCore.excludedSourcePaths, Does.Contain("Assets/StellarFramework/Runtime/Kits/Reskit/Loaders/ResourceLoader"));
+            Assert.That(resCore.excludedSourcePaths, Does.Contain("Assets/StellarFramework/Runtime/Kits/Reskit/ContentUpdate/YooAsset"));
+            Assert.That(resCore.excludedSourcePaths, Does.Contain("Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR"));
+            Assert.That(resCore.optionalCapabilities, Does.Not.Contain("ResourcesResourceLoading"));
             Assert.That(resCore.requiredProfileIds, Is.EqualTo(new[] { "logkit", "poolkit" }));
             Assert.That(resCore.requiredProfileIds, Does.Not.Contain("singletonkit"));
             Assert.That(resCore.requiredProfileIds, Does.Not.Contain("toolshub.core"));
             Assert.That(resCore.requiredProfileIds, Does.Not.Contain("generated.assetmap"));
+            Assert.That(resResources.sourcePaths,
+                Is.EqualTo(new[] { "Assets/StellarFramework/Runtime/Kits/Reskit/Loaders/ResourceLoader" }));
+            Assert.That(resResources.requiredProfileIds, Is.EqualTo(new[] { "reskit.core" }));
+            Assert.That(resResources.optionalCapabilities, Does.Contain("ResourcesResourceLoading"));
+            Assert.That(resContentUpdate.sourcePaths,
+                Is.EqualTo(new[] { "Assets/StellarFramework/Runtime/Kits/Reskit/ContentUpdate/YooAsset" }));
+            Assert.That(resContentUpdate.requiredProfileIds, Is.EqualTo(new[] { "reskit.core" }));
+            Assert.That(resContentUpdate.requiredUpm, Does.Contain("com.tuyoogame.yooasset"));
             Assert.That(resTools.kind, Is.EqualTo("tooling"));
             Assert.That(resTools.requiredProfileIds,
                 Is.EqualTo(new[] { "reskit.core", "generated.assetmap", "toolshub.core" }));
+            Assert.That(resTools.excludedSourcePaths,
+                Does.Contain("Assets/StellarFramework/Editor/StellarToolsHub/Modules/ResKit/CodeUpdate/HybridCLR"));
 
             Assert.That(uiCore.requiredProfileIds, Is.EqualTo(new[] { "runtime.core", "singletonkit" }));
             Assert.That(uiCore.sourcePaths,
@@ -220,9 +243,9 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(uiTools.requiredProfileIds, Is.EqualTo(new[] { "uikit.core", "toolshub.core" }));
 
             Assert.That(hybridCore.sourcePaths,
-                Is.EqualTo(new[] { "Assets/StellarFramework/Runtime/Kits/HybridCLRKit" }));
+                Is.EqualTo(new[] { "Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR" }));
             Assert.That(hybridTools.kind, Is.EqualTo("tooling"));
-            Assert.That(hybridTools.requiredProfileIds, Is.EqualTo(new[] { "hybridclrkit", "toolshub.core" }));
+            Assert.That(hybridTools.requiredProfileIds, Is.EqualTo(new[] { "reskit.codeupdate.hybridclr", "toolshub.core" }));
         }
 
         [Test]
@@ -285,7 +308,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             string uiResKit = ReadAssetText(
                 "Assets/StellarFramework/Runtime/Kits/UIKit/Adapters/ResKit/StellarFramework.UIKit.ResKit.asmdef");
             string hybridClr = ReadAssetText(
-                "Assets/StellarFramework/Runtime/Kits/HybridCLRKit/StellarFramework.HybridCLRKit.asmdef");
+                "Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR/StellarFramework.ResKit.CodeUpdate.HybridCLR.asmdef");
 
             Assert.That(resCore, Does.Contain("StellarFramework.LogKit"));
             Assert.That(resCore, Does.Contain("StellarFramework.PoolKit"));
@@ -639,6 +662,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             public string[] sourcePaths;
             public string[] documentationPaths;
             public string[] excludedSourcePaths;
+            public string[] optionalCapabilities;
             public string[] requiredProfileIds;
             public string[] requiredKits;
             public string[] requiredUpm;

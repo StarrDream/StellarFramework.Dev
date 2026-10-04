@@ -12,7 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7dfbbabcc7ccc564ba3b2d11037f0e04, type: 3}
   m_Name: HotUpdateSettings
   m_EditorClassIdentifier: 
-  resourceLoaderKey: YooAsset
   hotUpdateManifestKey: Assets/GameHotUpdate/Manifest/HotUpdateManifest.json
   hotUpdateAssemblyKey: Assets/GameHotUpdate/Code/HotUpdate.dll.bytes
   hotUpdateEntryClass: HotUpdate.HotUpdateMain

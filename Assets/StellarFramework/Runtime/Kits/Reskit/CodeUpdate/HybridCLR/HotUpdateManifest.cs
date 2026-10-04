@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace StellarFramework.HybridCLR
+namespace StellarFramework.Res.CodeUpdate.HybridCLR
 {
     /// <summary>
     /// HybridCLR code-update manifest.

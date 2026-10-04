@@ -136,7 +136,7 @@ namespace StellarFramework.Editor.Modules
         public override void OnGUI()
         {
             EditorGUILayout.HelpBox(
-                "Addressables 只负责 Load/Release 与本地内容构建。这里不提供 catalog 热更新、DLL 发布或 HybridCLR 编排。需要版本、下载、缓存和内容热更新时请使用 YooAsset；代码热更由 HybridCLRKit 独立负责。",
+                "Addressables 只负责 Load/Release 与本地内容构建。这里不提供 catalog 热更新、DLL 发布或 HybridCLR 编排。需要版本、下载、缓存和内容热更新时请使用 ResKit 内容更新 Provider；代码热更由可选的 ResKit.CodeUpdate.HybridCLR Provider 负责。",
                 MessageType.Info);
 
             AddressableAssetSettings settings = AddressableAssetSettingsDefaultObject.Settings;

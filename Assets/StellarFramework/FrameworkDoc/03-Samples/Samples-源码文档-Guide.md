@@ -10,6 +10,20 @@ Assets/StellarFramework/Samples/TankArena/Scene/FrameworkDemo.unity
 
 玩法源码与 `HotUpdate.asmdef` 一同放在 `Assets/StellarFramework/Samples/TankArena/Runtime`。程序集名保持为 `HotUpdate`，让 HybridCLR 导出、YooAsset 收集器和现有发布门禁继续使用同一程序集标识。`HotUpdateMain.Main()` 是发布包入口；`Editor/FrameworkDemoPlayBootstrap.cs` 仅在编辑器直接运行该场景时从本地程序集调用入口。
 
+## 模块职责
+
+| 模块 | 职责 |
+| --- | --- |
+| `HotUpdateMain` | 提供稳定的热更程序集入口，并启动 Tank Arena。 |
+| `TankArenaGame` | 负责场景资源加载、HUD 绑定、玩家输入和战斗表现。 |
+| `TankArenaArchitecture` | 组织 Model、Service、FSM 与框架 Kit 的启动注册。 |
+| `TankArenaLocalizationService` | 维护案例的中英文文案与运行时切换。 |
+| `FrameworkDemoPlayBootstrap` | 仅供 Unity Editor 直接预览时进入玩法，不属于 Player 热更流程。 |
+
+## 源码
+
+主要实现位于 `Assets/StellarFramework/Samples/TankArena/Runtime`；编辑器预览入口位于同级 `Editor` 目录。
+
 ## 主要文件
 
 | 文件 | 职责 |
@@ -43,11 +57,11 @@ Projectile 与 ArenaEffect 的纯 C# 数据记录由 PoolKit 复用。其画面�
 
 ## 热更路径
 
-Android / Windows Release Gate 使用 YooAsset 构建和加载包，通过 ResKit 读取 Manifest、热更 DLL 与 AOT metadata，再由 HybridCLR 调用 `HotUpdateMain.Main()`。Demo 的 Editor 本地预览不走这条下载路径，不计作热更新证据。具体产物目录和命令以 HybridCLRKit 指南及 `Assets/StellarFrameworkVerification` 为准。
+Android / Windows Release Gate 使用 YooAsset 构建和加载包，通过 ResKit Scope 读取 Manifest、热更 DLL 与 AOT metadata，再由 `ResKit.CodeUpdate.HybridCLR` 调用 `HotUpdateMain.Main()`。Demo 的 Editor 本地预览不走这条下载路径，不计作热更新证据。具体产物目录和命令以 ResKit.CodeUpdate.HybridCLR 指南及 `Assets/StellarFrameworkVerification` 为准。
 
 ## 分发与维护
 
 - Samples 是仓库内教学资产，不是 `KitDistributionCatalog` Profile，也不进入正式 Runtime 包。
 - 发布 Catalog 将 `Samples/TankArena` 与 `StreamingAssets/TankArena` 一并列为框架仓库示例内容。
 - Kit 的行为回归位于 `Assets/StellarFramework/Tests`，Player 与热更发布验证位于 `Assets/StellarFrameworkVerification`。
-- 若调整玩法程序集路径，需同步 HybridCLRKit 文档、源策略、包发布策略和 Android / Windows 门禁；更改程序集名或热更输出布局前先更新全部消费者。
+- 若调整玩法程序集路径，需同步 ResKit.CodeUpdate.HybridCLR 文档、源策略、包发布策略和 Android / Windows 门禁；更改程序集名或热更输出布局前先更新全部消费者。

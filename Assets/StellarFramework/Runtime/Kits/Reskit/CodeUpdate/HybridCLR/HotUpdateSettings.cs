@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace StellarFramework.HybridCLR
+namespace StellarFramework.Res.CodeUpdate.HybridCLR
 {
     public sealed class HotUpdateSettingsValidationReport
     {
@@ -28,13 +28,12 @@ namespace StellarFramework.HybridCLR
         }
     }
 
-    [CreateAssetMenu(fileName = "HotUpdateSettings", menuName = "StellarFramework/HybridCLR/Hot Update Settings")]
+    [CreateAssetMenu(fileName = "HotUpdateSettings", menuName = "StellarFramework/ResKit/Code Update/HybridCLR Settings")]
     public sealed class HotUpdateSettings : ScriptableObject
     {
         public const string DefaultResourcesPath = "HotUpdateSettings";
 
         [Header("HybridCLR Code Update")]
-        [SerializeField] private string resourceLoaderKey = "YooAsset";
         [SerializeField] private string hotUpdateManifestKey = "Assets/GameHotUpdate/Manifest/HotUpdateManifest.json";
         [SerializeField] private string hotUpdateAssemblyKey = "Assets/GameHotUpdate/Code/HotUpdate.dll.bytes";
         [SerializeField] private string hotUpdateEntryClass = "HotUpdate.HotUpdateMain";
@@ -48,7 +47,6 @@ namespace StellarFramework.HybridCLR
             "Assets/GameHotUpdate/Metadata/UnityEngine.CoreModule.dll.bytes"
         };
 
-        public string ResourceLoaderKey => resourceLoaderKey;
         public string HotUpdateManifestKey => hotUpdateManifestKey;
         public string HotUpdateAssemblyKey => hotUpdateAssemblyKey;
         public string HotUpdateEntryClass => hotUpdateEntryClass;
@@ -75,17 +73,12 @@ namespace StellarFramework.HybridCLR
 
         public HotUpdateSettingsValidationReport Validate()
         {
-            return Validate(HybridCLRRuntimePolicy.IsStrictProductionRuntime);
+            return ValidateCore();
         }
 
-        public HotUpdateSettingsValidationReport Validate(bool strictProduction)
+        private HotUpdateSettingsValidationReport ValidateCore()
         {
             HotUpdateSettingsValidationReport report = new HotUpdateSettingsValidationReport();
-
-            if (string.IsNullOrWhiteSpace(resourceLoaderKey))
-            {
-                report.AddError("ResourceLoaderKey is empty. Configure the ResKit backend used to read HybridCLR dll.bytes assets.");
-            }
 
             if (string.IsNullOrWhiteSpace(hotUpdateManifestKey))
             {

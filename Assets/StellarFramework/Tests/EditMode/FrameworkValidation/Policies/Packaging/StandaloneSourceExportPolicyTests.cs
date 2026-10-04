@@ -48,9 +48,44 @@ namespace StellarFramework.Tests.FrameworkValidation
                 "logkit",
                 "poolkit",
                 "reskit.core",
+                "reskit.resources",
                 "reskit.tools",
                 "toolshub.core"
             }));
+
+            foreach (string presetId in new[]
+                     {
+                         "reskit.resources.only",
+                         "reskit.assetbundle.only",
+                         "reskit.addressables.only",
+                         "reskit.resources.assetbundle"
+                     })
+            {
+                string[] closure = (string[])resolveMethod.Invoke(null, new object[] { presetId });
+                Assert.That(closure, Does.Contain("reskit.core"), presetId);
+                Assert.That(closure, Does.Not.Contain("reskit.yooasset"), presetId);
+                Assert.That(closure, Does.Not.Contain("reskit.codeupdate.hybridclr"), presetId);
+            }
+            string[] resourcesOnly =
+                (string[])resolveMethod.Invoke(null, new object[] { "reskit.resources.only" });
+            Assert.That(resourcesOnly, Does.Contain("reskit.resources"));
+            Assert.That(resourcesOnly, Does.Not.Contain("reskit.assetbundle"));
+            Assert.That(resourcesOnly, Does.Not.Contain("reskit.addressables"));
+            string[] assetBundleOnly =
+                (string[])resolveMethod.Invoke(null, new object[] { "reskit.assetbundle.only" });
+            Assert.That(assetBundleOnly, Does.Contain("reskit.assetbundle"));
+            Assert.That(assetBundleOnly, Does.Not.Contain("reskit.resources"));
+            Assert.That(assetBundleOnly, Does.Not.Contain("reskit.addressables"));
+            string[] addressablesOnly =
+                (string[])resolveMethod.Invoke(null, new object[] { "reskit.addressables.only" });
+            Assert.That(addressablesOnly, Does.Contain("reskit.addressables"));
+            Assert.That(addressablesOnly, Does.Not.Contain("reskit.resources"));
+            Assert.That(addressablesOnly, Does.Not.Contain("reskit.assetbundle"));
+            string[] resourcesAndAssetBundle =
+                (string[])resolveMethod.Invoke(null, new object[] { "reskit.resources.assetbundle" });
+            Assert.That(resourcesAndAssetBundle, Does.Contain("reskit.resources"));
+            Assert.That(resourcesAndAssetBundle, Does.Contain("reskit.assetbundle"));
+            Assert.That(resourcesAndAssetBundle.Count(id => id == "reskit.core"), Is.EqualTo(1));
 
             string[] uiClosure = (string[])resolveMethod.Invoke(null, new object[] { "uikit.complete" });
             Assert.That(uiClosure, Is.EqualTo(new[]
@@ -59,6 +94,7 @@ namespace StellarFramework.Tests.FrameworkValidation
                 "logkit",
                 "poolkit",
                 "reskit.core",
+                "reskit.resources",
                 "reskit.tools",
                 "runtime.core",
                 "singletonkit",
@@ -74,10 +110,11 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(hotUpdateClosure, Is.EqualTo(new[]
             {
                 "generated.assetmap",
-                "hybridclrkit",
-                "hybridclrkit.tools",
                 "logkit",
                 "poolkit",
+                "reskit.codeupdate.hybridclr",
+                "reskit.codeupdate.hybridclr.tools",
+                "reskit.contentupdate.yooasset",
                 "reskit.core",
                 "reskit.tools",
                 "reskit.yooasset",
@@ -117,9 +154,9 @@ namespace StellarFramework.Tests.FrameworkValidation
 
             Assert.That(catalog, Does.Contain("standalone.architecture"));
             Assert.That(catalog, Does.Contain("standalone.extensions"));
-            Assert.That(catalog, Does.Contain("\"id\": \"hybridclrkit\""));
+            Assert.That(catalog, Does.Contain("\"id\": \"reskit.codeupdate.hybridclr\""));
             Assert.That(catalog, Does.Contain("com.code-philosophy.hybridclr"));
-            Assert.That(catalog, Does.Contain("Runtime/Kits/HybridCLRKit"));
+            Assert.That(catalog, Does.Contain("Runtime/Kits/Reskit/CodeUpdate/HybridCLR"));
             Assert.That(catalog, Does.Not.Contain("\"id\": \"hotupdate.addressables\""));
             Assert.That(compactCatalog,
                 Does.Contain("\"excludedCapabilities\":[\"Addressables\",\"HybridCLR\",\"CodeHotUpdate\"]"));
@@ -140,7 +177,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(compactCatalog, Does.Contain("\"requiredProfileIds\":[\"runtime.core\",\"singletonkit\"]"));
             Assert.That(catalog, Does.Contain("\"id\": \"uikit.tools\""));
             Assert.That(catalog, Does.Contain("\"id\": \"reskit.tools\""));
-            Assert.That(catalog, Does.Contain("\"id\": \"hybridclrkit.tools\""));
+            Assert.That(catalog, Does.Contain("\"id\": \"reskit.codeupdate.hybridclr.tools\""));
             Assert.That(catalog, Does.Contain("\"id\": \"reskit.assetbundle\""));
             Assert.That(compactCatalog,
                 Does.Contain("\"requiredKits\":[\"ResKit.Core\",\"SingletonKit\",\"Generated.AssetMap\"]"));
@@ -274,7 +311,7 @@ namespace StellarFramework.Tests.FrameworkValidation
                 "Assets/StellarFramework/Runtime/Kits/Reskit/Loaders/AddressableLoader/StellarFramework.ResKit.Addressables.asmdef");
             string catalog = ReadAssetText("Assets/StellarFramework/KitCatalog/KitDistributionCatalog.json");
 
-            Assert.That(addressablesAsmdef, Does.Not.Contain("StellarFramework.HybridCLRKit"));
+            Assert.That(addressablesAsmdef, Does.Not.Contain("StellarFramework.ResKit.CodeUpdate.HybridCLR"));
             Assert.That(catalog, Does.Contain("\"id\": \"reskit.addressables\""));
             Assert.That(catalog, Does.Not.Contain("\"id\": \"hotupdate.addressables\""));
         }
@@ -291,6 +328,24 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(core, Does.Not.Contain("Allocate<AssetBundleLoader>()"));
             Assert.That(assetBundleAsmdef, Does.Contain("StellarFramework.ResKit"));
             Assert.That(installer, Does.Contain("ResKit.RegisterLoader(ResKit.KeyAssetBundle"));
+        }
+
+        [Test]
+        public void ResourcesBackendIsAnIndependentlyExportableResKitAdapter()
+        {
+            string core = ReadAssetText("Assets/StellarFramework/Runtime/Kits/Reskit/ResKit.cs");
+            string resourcesAsmdef = ReadAssetText(
+                "Assets/StellarFramework/Runtime/Kits/Reskit/Loaders/ResourceLoader/StellarFramework.ResKit.Resources.asmdef");
+            string installer = ReadAssetText(
+                "Assets/StellarFramework/Runtime/Kits/Reskit/Loaders/ResourceLoader/ResKitResourcesInstaller.cs");
+            string catalog = ReadAssetText("Assets/StellarFramework/KitCatalog/KitDistributionCatalog.json");
+
+            Assert.That(core, Does.Not.Contain("ResourceLoader"));
+            Assert.That(resourcesAsmdef, Does.Contain("StellarFramework.ResKit"));
+            Assert.That(installer, Does.Contain("ResKit.RegisterLoader(ResKit.KeyResources"));
+            Assert.That(installer, Does.Contain("RuntimeInitializeOnLoadMethod"));
+            Assert.That(catalog, Does.Contain("\"id\": \"reskit.resources\""));
+            Assert.That(catalog, Does.Contain("Assets/StellarFramework/Runtime/Kits/Reskit/Loaders/ResourceLoader"));
         }
 
         [Test]
@@ -552,7 +607,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             string assetsMapGenerator = ReadAssetText(
                 "Assets/StellarFramework/Editor/StellarToolsHub/Modules/ResKit/AssetsMapGenerator.cs");
             string hybridClr = ReadAssetText(
-                "Assets/StellarFramework/Editor/StellarToolsHub/Modules/HybridCLRKit/HybridCLRHotUpdateAssetExporter.cs");
+                "Assets/StellarFramework/Editor/StellarToolsHub/Modules/ResKit/CodeUpdate/HybridCLR/HybridCLRHotUpdateAssetExporter.cs");
 
             Assert.That(resKitHub, Does.Contain("AssetsMapGenerator.GenerateIfNeeded"));
             Assert.That(resKitHub, Does.Contain("重建 AssetsMap"));
@@ -631,6 +686,101 @@ namespace StellarFramework.Tests.FrameworkValidation
                 Assert.That(outerPackagePaths, Does.Not.Contain(
                     "Assets/StellarFramework/Runtime/Kits/EventKit/StellarFramework.EventKit.asmdef"));
                 Assert.That(File.ReadAllText(guidePath), Does.Contain("Bootstrap 会直接导入 Kit payload"));
+            }
+            finally
+            {
+                if (!string.IsNullOrWhiteSpace(outputPath) && File.Exists(outputPath))
+                {
+                    File.Delete(outputPath);
+                }
+
+                if (!string.IsNullOrWhiteSpace(guidePath) && File.Exists(guidePath))
+                {
+                    File.Delete(guidePath);
+                }
+            }
+        }
+
+        [Test]
+        public void ResKitBackendCombinationsExportAsIsolatedPackages()
+        {
+            AssertResKitProfileGroupExport(
+                new[] { "reskit.resources" },
+                "Validation-ResKit-Resources.unitypackage",
+                new[] { "/Loaders/ResourceLoader/" },
+                new[] { "/Loaders/AssetBundleLoader/", "/Loaders/AddressableLoader/", "/Loaders/YooAssetLoader/" });
+            AssertResKitProfileGroupExport(
+                new[] { "reskit.assetbundle" },
+                "Validation-ResKit-AssetBundle.unitypackage",
+                new[] { "/Loaders/AssetBundleLoader/" },
+                new[] { "/Loaders/ResourceLoader/", "/Loaders/AddressableLoader/", "/Loaders/YooAssetLoader/" });
+            AssertResKitProfileGroupExport(
+                new[] { "reskit.addressables" },
+                "Validation-ResKit-Addressables.unitypackage",
+                new[] { "/Loaders/AddressableLoader/" },
+                new[] { "/Loaders/ResourceLoader/", "/Loaders/AssetBundleLoader/", "/Loaders/YooAssetLoader/" });
+            AssertResKitProfileGroupExport(
+                new[] { "reskit.resources", "reskit.assetbundle" },
+                "Validation-ResKit-Resources-AssetBundle.unitypackage",
+                new[] { "/Loaders/ResourceLoader/", "/Loaders/AssetBundleLoader/" },
+                new[] { "/Loaders/AddressableLoader/", "/Loaders/YooAssetLoader/" });
+        }
+
+        private static void AssertResKitProfileGroupExport(
+            string[] profileIds,
+            string outputFileName,
+            string[] expectedAdapterPathSegments,
+            string[] excludedAdapterPathSegments)
+        {
+            Type publisherType = AppDomain.CurrentDomain.GetAssemblies()
+                .Select(assembly => assembly.GetType(
+                    "StellarFramework.Editor.Modules.StellarFrameworkPackagePublisher", false))
+                .FirstOrDefault(type => type != null);
+            Assert.That(publisherType, Is.Not.Null);
+
+            MethodInfo exportMethod = publisherType.GetMethod(
+                "ExportKitPackageGroupInternal",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(exportMethod, Is.Not.Null);
+
+            string outputPath = null;
+            string guidePath = null;
+            try
+            {
+                outputPath = (string)exportMethod.Invoke(null, new object[] { profileIds, outputFileName });
+                guidePath = Path.Combine(
+                    Path.GetDirectoryName(outputPath) ?? string.Empty,
+                    Path.GetFileNameWithoutExtension(outputFileName) + "-Dependencies.md");
+
+                string payloadAssetPath =
+                    "Assets/Editor/StellarFramework/KitPackageBootstrap/" +
+                    "__StellarFramework-KitPayload-" +
+                    Path.GetFileNameWithoutExtension(outputFileName) + ".unitypackage.bytes";
+                byte[] payloadBytes = ReadUnityPackageAsset(outputPath, payloadAssetPath);
+                Assert.That(payloadBytes, Is.Not.Null.And.Not.Empty, outputFileName);
+
+                string[] payloadPaths = ReadUnityPackagePaths(payloadBytes);
+                Assert.That(payloadPaths, Does.Contain(
+                    "Assets/StellarFramework/Runtime/Kits/Reskit/ResKit.cs"), outputFileName);
+                foreach (string expectedSegment in expectedAdapterPathSegments)
+                {
+                    Assert.That(payloadPaths.Any(path => path.Contains(expectedSegment, StringComparison.Ordinal)),
+                        Is.True,
+                        $"{outputFileName} should contain the selected adapter path '{expectedSegment}'.");
+                }
+
+                foreach (string excludedSegment in excludedAdapterPathSegments)
+                {
+                    Assert.That(payloadPaths.Any(path => path.Contains(excludedSegment, StringComparison.Ordinal)),
+                        Is.False,
+                        $"{outputFileName} should not contain the unselected adapter path '{excludedSegment}'.");
+                }
+
+                Assert.That(payloadPaths.Any(path =>
+                    path.StartsWith("Assets/StellarFramework/Runtime/Kits/Reskit/ContentUpdate/YooAsset/",
+                        StringComparison.Ordinal) ||
+                    path.StartsWith("Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR/",
+                        StringComparison.Ordinal)), Is.False, outputFileName);
             }
             finally
             {
@@ -790,42 +940,46 @@ namespace StellarFramework.Tests.FrameworkValidation
         }
 
         [Test]
-        public void HybridClrKitIsOneBackendAgnosticCodeUpdateProfile()
+        public void ResKitCodeUpdateHybridClrIsOneBackendAgnosticProfile()
         {
             string catalog = ReadAssetText("Assets/StellarFramework/KitCatalog/KitDistributionCatalog.json");
             string publisher = ReadAssetText(
                 "Assets/StellarFramework/Editor/StellarToolsHub/Modules/Packaging/StellarFrameworkPackagePublisher.cs");
 
-            Assert.That(catalog, Does.Contain("\"id\": \"hybridclrkit\""));
-            Assert.That(catalog, Does.Contain("StellarFramework-HybridCLRKit.unitypackage"));
+            Assert.That(catalog, Does.Contain("\"id\": \"reskit.codeupdate.hybridclr\""));
+            Assert.That(catalog, Does.Contain("StellarFramework-ResKit-CodeUpdate-HybridCLR.unitypackage"));
             Assert.That(catalog, Does.Not.Contain("\"id\": \"hotupdate.core\""));
             Assert.That(catalog, Does.Not.Contain("\"id\": \"hotupdate.addressables\""));
             Assert.That(catalog, Does.Not.Contain("\"id\": \"hotupdate.hybridclr\""));
             Assert.That(catalog, Does.Contain("com.code-philosophy.hybridclr"));
-            Assert.That(publisher, Does.Contain("ExportHybridCLRKitPackage"));
+            Assert.That(publisher, Does.Contain("ExportResKitHybridCLRCodeUpdatePackage"));
         }
 
         [Test]
-        public void HybridClrKitUsesResKitAndDoesNotDependOnAddressables()
+        public void ResKitCodeUpdateHybridClrUsesResKitAndDoesNotDependOnAddressables()
         {
-            string core = ReadAssetText("Assets/StellarFramework/Runtime/Kits/HybridCLRKit/HotUpdateContracts.cs");
+            string core = ReadAssetText("Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR/HotUpdateContracts.cs");
             string adapter = ReadAssetText(
-                "Assets/StellarFramework/Runtime/Kits/HybridCLRKit/Runtime/HybridCLRHotUpdateAdapter.cs");
+                "Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR/Runtime/HybridCLRHotUpdateAdapter.cs");
             string asmdef = ReadAssetText(
-                "Assets/StellarFramework/Runtime/Kits/HybridCLRKit/StellarFramework.HybridCLRKit.asmdef");
+                "Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR/StellarFramework.ResKit.CodeUpdate.HybridCLR.asmdef");
             string catalog = ReadAssetText("Assets/StellarFramework/KitCatalog/KitDistributionCatalog.json");
 
-            Assert.That(core, Does.Contain("public static class HybridCLRKit"));
+            Assert.That(core, Does.Not.Contain("HybridCLRKit"));
+            Assert.That(adapter, Does.Contain("class HybridCLRResCodeUpdateProvider"));
+            Assert.That(asmdef, Does.Contain("StellarFramework.ResKit.CodeUpdate.HybridCLR"));
             Assert.That(adapter, Does.Contain("class HybridCLRHook"));
-            Assert.That(adapter, Does.Contain("class HybridCLRRunner"));
-            Assert.That(adapter, Does.Contain("ResKit.CreateCustomScope"));
-            Assert.That(adapter, Does.Contain("settings.ResourceLoaderKey"));
+            Assert.That(adapter, Does.Contain("class HybridCLRCodeUpdateRuntime"));
+            Assert.That(adapter, Does.Not.Contain("ResKit.CreateCustomScope"));
+            Assert.That(adapter, Does.Not.Contain("ResourceLoaderKey"));
             Assert.That(adapter, Does.Not.Contain("AddressableHotUpdateManager"));
             Assert.That(adapter, Does.Not.Contain("CheckCatalogUpdates"));
             Assert.That(adapter, Does.Not.Contain("DownloadDependencies"));
             Assert.That(asmdef, Does.Not.Contain("Unity.Addressables"));
             Assert.That(asmdef, Does.Not.Contain("StellarFramework.ResKit.Addressables"));
-            Assert.That(catalog, Does.Contain("\"id\": \"hybridclrkit\""));
+            Assert.That(catalog, Does.Contain("\"id\": \"reskit.codeupdate.hybridclr\""));
+            Assert.That(File.Exists(ToAbsoluteAssetPath(
+                "Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR/LegacyCompatibility/StellarFramework.HybridCLRKit.asmdef")), Is.False);
         }
 
         private static void AssertChildToolsHubAssembly(string kitFolder, string expectedReference)

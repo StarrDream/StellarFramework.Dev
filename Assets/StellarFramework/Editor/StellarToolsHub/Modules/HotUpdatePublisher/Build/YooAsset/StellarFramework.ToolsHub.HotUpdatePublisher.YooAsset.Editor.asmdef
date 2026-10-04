@@ -3,7 +3,7 @@
   "rootNamespace": "StellarFramework.Editor.HotUpdatePublisher",
   "references": [
     "StellarFramework.ToolsHub.HotUpdatePublisher.Editor",
-    "StellarFramework.HybridCLRKit",
+    "StellarFramework.ResKit.CodeUpdate.HybridCLR",
     "YooAsset.Editor",
     "YooAsset"
   ],

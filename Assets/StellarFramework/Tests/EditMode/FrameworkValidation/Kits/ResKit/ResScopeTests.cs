@@ -61,6 +61,7 @@ namespace StellarFramework.Tests.FrameworkValidation
                 asset = await scope.LoadAsync<GameObject>("Assets/Test/Scope.asset");
                 Assert.That(asset, Is.Not.Null);
                 Assert.That(scope.IsDisposed, Is.False);
+                Assert.That(scope.LoaderKey, Is.EqualTo(LoaderKey));
                 Assert.That(loader.UnloadCount, Is.EqualTo(0));
             }
 

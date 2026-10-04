@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace StellarFramework.HybridCLR
+namespace StellarFramework.Res.CodeUpdate.HybridCLR
 {
     /// <summary>
     /// 热更运行策略

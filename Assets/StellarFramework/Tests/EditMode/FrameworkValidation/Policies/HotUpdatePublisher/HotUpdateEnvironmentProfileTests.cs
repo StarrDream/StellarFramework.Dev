@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using NUnit.Framework;
 using StellarFramework.Editor.HotUpdatePublisher;
 using UnityEngine;
@@ -16,9 +17,18 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
 
             Assert.That(profile.EnvironmentId, Is.EqualTo(environment.ToString()));
             Assert.That(profile.PublishTarget, Is.EqualTo("LocalFolder"));
-            Assert.That(profile.LocalFolderRoot, Is.Empty);
             Assert.That(profile.CredentialProfileName, Is.Empty);
-            Assert.That(profile.MainHostServer, Is.Empty);
+            if (environment == HotUpdateEnvironmentKind.Development)
+            {
+                Assert.That(profile.LocalFolderRoot, Does.Contain(Path.Combine("BuildArtifacts", "HotUpdate", "Local")));
+                Assert.That(Uri.TryCreate(profile.MainHostServer, UriKind.Absolute, out Uri localHost) && localHost.IsFile, Is.True);
+                Assert.That(profile.Validate().IsValid, Is.True);
+            }
+            else
+            {
+                Assert.That(profile.LocalFolderRoot, Is.Empty);
+                Assert.That(profile.MainHostServer, Is.Empty);
+            }
         }
 
         [Test]

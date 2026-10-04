@@ -9,7 +9,7 @@ using UnityEditor.Build;
 using UnityEngine;
 using StellarFramework.Editor;
 using StellarFramework.Editor.Modules;
-using StellarFramework.HybridCLR;
+using StellarFramework.Res.CodeUpdate.HybridCLR;
 using StellarFrameworkVerification.Runtime;
 using YooAsset;
 using YooAsset.Editor;

@@ -2,9 +2,10 @@
   "name": "StellarFramework.Verification.Runtime",
   "rootNamespace": "StellarFrameworkVerification.Runtime",
   "references": [
-    "StellarFramework.HybridCLRKit",
+    "StellarFramework.ResKit.CodeUpdate.HybridCLR",
     "StellarFramework.ResKit",
     "StellarFramework.ResKit.YooAsset",
+    "StellarFramework.ResKit.ContentUpdate.YooAsset",
     "StellarFramework.LogKit",
     "StellarFramework.PoolKit",
     "UniTask",

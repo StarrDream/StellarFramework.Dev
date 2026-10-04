@@ -1,4 +1,4 @@
-# HotUpdate Publisher 源码文档
+# 热更发布器（HotUpdate Publisher） 源码文档
 
 ## 组装边界
 

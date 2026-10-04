@@ -1,36 +1,35 @@
 # StellarFramework.Extensions
 
-为 StellarFramework 增加 Algorithms、World 和 Flow 能力的源码仓。本仓只发布 Unity <code>Assets</code> 内容，不是独立 Unity 工程或 UPM 包。HybridCLR 代码热更 Kit 与 HotUpdate Publisher 位于匹配版本的 General 主仓。
+Algorithms、World 和 Flow 的 StellarFramework 扩展 Kit 源码仓。本仓提供可与 General 组合的 Unity `Assets` 内容；它不是独立 Unity 工程，也不是 UPM 包。使用前请准备与本仓发布版本相同的 [StellarFramework General](https://github.com/StarrDream/StellarFramework)。
 
-发布版本：{{RELEASE_VERSION}}
+发布版本：**{{RELEASE_VERSION}}**
 
 源码提交：[{{SOURCE_COMMIT}}](https://github.com/StarrDream/StellarFramework.Dev/commit/{{SOURCE_COMMIT}})
 
-使用本仓前，先安装相同发布版本的 [StellarFramework General](https://github.com/StarrDream/StellarFramework)。本仓要求的 General Profile 和 UPM 包分别列在 <code>RELEASE-MANIFEST.json</code> 的 <code>requiredGeneralProfileIds</code> 与 <code>requiredUpm</code> 中。
+## 推荐用法：从 General 导出需要的 Kit
 
-## 推荐方式：从 General 导出所需 Kit
+这种方式适合只把部分扩展能力加入游戏项目：
 
-1. 克隆并打开匹配版本的 General 工程。
-2. 将本仓 <code>Assets</code> 内容合并到 General 工程的 <code>Assets</code> 目录，保留全部 <code>.meta</code> 文件。
-3. 将 <code>requiredUpm</code> 中的包规格合并到 <code>Packages/manifest.json</code>，使用清单中列出的版本。
-4. 等待 Unity 完成依赖解析和编译。
-5. 从菜单 **StellarFramework → Export** 选择需要的扩展 Profile 并导出。
+1. 下载与本仓版本一致的 General，使用 Unity 2022.3.62f3c1 打开并等待依赖解析完成。
+2. 将本仓的 `Assets` 内容合并到 General 工程的 `Assets` 目录，保留所有 `.meta` 文件。
+3. 按 `RELEASE-MANIFEST.json` 中的 `requiredUpm`，将缺少的包及对应版本加入 General 工程的 `Packages/manifest.json`。等待 Unity 完成编译。
+4. 从 **StellarFramework → Export** 选择要使用的扩展 Profile，检查依赖摘要并导出。
+5. 在游戏工程中导入导出的 `.unitypackage`，按包内提示完成 UPM 依赖安装。
 
-该方式适合希望只把一个或几个扩展 Kit 放进游戏项目的团队。Profile 和依赖闭包由 General Catalog 管理。
+导出器会根据 General 的 Kit Catalog 补齐框架依赖。不要把合入扩展源码后的 General 工作目录直接当成新发布仓；下游仓应始终由 Dev 发布器生成。
 
-## 直接添加到已有 Unity 项目
+## 直接合入已有 Unity 工程
 
-确认项目已包含 <code>requiredGeneralProfileIds</code> 指定的通用 Profile，然后合并本仓 <code>Assets</code> 内容并配置 <code>requiredUpm</code> 中的 UPM 包。保留 <code>.meta</code> 文件，等待 Unity 编译，再按对应 Kit 文档配置和验证项目。
+如果项目需要直接使用源码，先在 `RELEASE-MANIFEST.json` 中核对该版本要求的 General Profile 和 UPM 规格。确认项目已具备这些 General 能力后，将本仓 `Assets` 内容合入项目，保留 `.meta` 文件并安装所需 UPM 包，再按对应 Kit 指南配置。此方式会带入本仓的扩展源码；只需要少量 Kit 时，优先使用上一节的导出流程。
 
-## 扩展目录
+## 扩展范围
 
-| 领域 | 内容 |
+| 领域 | Kit |
 | --- | --- |
-| Algorithms | GridKit、SpatialKit、PathKit、SimulationKit 及相关 Adapter |
-| World | WorldKit、WorldGenKit、PlacementKit、Streaming、World Framework Tools |
-| Flow | FlowKit Core、Unity 集成、图编辑器与校验工具 |
-## 文档与版本
+| Algorithms | GridKit、SpatialKit、SimulationKit、PathKit 及其适配器 |
+| World | WorldKit、WorldGenKit、PlacementKit、Streaming 与 World Framework Tools |
+| Flow | FlowKit Core、Unity 集成、可视化编辑器与校验工具 |
 
-各 Kit 的用法见 <code>Assets/StellarFramework/FrameworkDoc/02-Kits</code>；World Framework 文档见 <code>Assets/StellarFramework/FrameworkDoc/06-WorldFramework</code>。<code>RELEASE-MANIFEST.json</code> 记录源码提交、Profile、General 前置条件和精确 UPM 包规格。
+各 Kit 指南位于 `Assets/StellarFramework/FrameworkDoc/02-Kits`；World Framework 文档位于 `Assets/StellarFramework/FrameworkDoc/06-WorldFramework`。`RELEASE-MANIFEST.json` 记录该发布的 Dev 源码提交、扩展域、General 前置 Profile 和 UPM 规格。
 
-本仓由 [StellarFramework.Dev](https://github.com/StarrDream/StellarFramework.Dev) 生成。源码问题和功能改动请在 Dev 工程中处理。
+扩展源码及发布规则由 [StellarFramework.Dev](https://github.com/StarrDream/StellarFramework.Dev) 维护。使用者仓中的源码问题和功能修改请回到 Dev 工程处理。
