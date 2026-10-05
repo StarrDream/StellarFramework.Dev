@@ -1,49 +1,74 @@
 # StellarFramework.Extensions
 
-Source for the Algorithms, World, and Flow extension Kits. This repository contains Unity `Assets` that work with General; it is neither a standalone Unity project nor a UPM package. Use the [StellarFramework General](https://github.com/StarrDream/StellarFramework) release with the same version.
+Extension Kits for use with StellarFramework General. This repository provides Algorithms, World, and Flow capabilities. It is not a standalone Unity project; start with the matching General release.
 
 Release: **{{RELEASE_VERSION}}**
 
-Source commit: [{{SOURCE_COMMIT}}](https://github.com/StarrDream/StellarFramework.Dev/commit/{{SOURCE_COMMIT}})
+Dev source commit: [{{SOURCE_COMMIT}}](https://github.com/StarrDream/StellarFramework.Dev/commit/{{SOURCE_COMMIT}})
 
-## Framework and extensions
+## Framework overview
 
-StellarFramework is layered as **Runtime foundation → feature Kits → adapters/providers → Unity or third-party implementations**. General supplies shared services and common Kits. Extensions reuses those capabilities through declared dependencies and can be exported selectively. Tools Hub handles configuration and export in the Editor; it is not part of the game Player.
+Extensions adds algorithms, world organization and generation, placement rules, and workflow orchestration. It is distributed as Unity Assets source. Merge it into the General project at the same release version, then use Tools Hub to export the Kits your project needs.
 
-Extensions contains Unity `Assets` source for use with the matching General release. It is not a standalone Unity project. Start with the same-version General project and preserve `.meta` files when combining the source trees.
+1. Download the matching [StellarFramework General release](https://github.com/StarrDream/StellarFramework/releases) and open it with Unity 2022.3.62f3c1.
+2. Merge this repository's `Assets` directory into General's `Assets` directory. Preserve all `.meta` files.
+3. In **StellarFramework → Export**, select the extension Kits or Profile and review its dependencies.
+4. Import the unitypackage into your Unity project and install the listed dependencies.
 
-| Domain | Main Kits and purpose |
+## Requirements
+
+- Unity Editor 2022.3.62f3c1
+- StellarFramework General at the same release version
+- Unity Package Manager access when opening the General project
+- Preserve Unity `.meta` files when merging source
+
+Extensions is a source repository, not a UPM package. Profiles and prerequisites are listed in `RELEASE-MANIFEST.json` and the General Kit Catalog.
+
+## Framework concepts
+
+| Concept | Description |
 | --- | --- |
-| Algorithms | GridKit (grids and topology), SpatialKit (spatial queries), PathKit (pathfinding), SimulationKit (simulation primitives) |
-| World | WorldKit (world state), WorldGenKit (procedural generation), PlacementKit (placement rules), Streaming (chunk loading and save integration) |
-| Flow | FlowKit (flow data and execution), Unity integration, visual editor, and validation tools |
+| General | Supplies the `StellarFramework.cs` architecture foundation and shared Kits |
+| Extensions Kit | Optional capabilities in Algorithms, World, and Flow; import only what the project needs |
+| Catalog Profile | Declares export files, required General Profiles, and external UPM dependencies |
+| Tools Hub | Configure and export in the General project after merging Extensions source; not part of the game Player |
 
-Unity adapters, Editor tools, and dependencies are split into catalog Profiles so projects can export the combinations they need.
+Preserve `.meta` files to retain Unity asset GUIDs and scene or prefab references.
 
-## Quick start: export extension Kits from General
+## Architecture
 
-Use this workflow to add selected extension capabilities to a game project:
+The MSV architecture comes from `StellarFramework.cs` in the matching General release. Extensions adds optional algorithms and systems; it does not replace the architecture container or require every extension Kit.
 
-1. Download the matching General release, open it with Unity 2022.3.62f3c1, and wait for package resolution.
-2. Merge this repository's `Assets` content into the General project's `Assets` directory. Preserve all `.meta` files.
-3. Add any missing packages and versions listed under `requiredUpm` in `RELEASE-MANIFEST.json` to the General project's `Packages/manifest.json`. Wait for Unity to compile.
-4. Open **StellarFramework → Export**, select the extension Profiles you need, review their dependencies, and export.
-5. Import the resulting `.unitypackage` in your game project and follow its UPM setup prompts.
+~~~mermaid
+flowchart LR
+    Startup["Game startup"] -->|"Init / lifecycle"| Architecture["Architecture<T><br/>from General"]
+    Architecture --> Model["Model<br/>application state"]
+    Architecture --> Service["Service<br/>application operations"]
+    View["View<br/>StellarView / Unity UI"] -->|"calls"| Service
+    Service -->|"reads / updates"| Model
+    View -->|"read-only query"| Model
+    Extension["Selected Extensions Kits<br/>Algorithms / World / Flow"] -->|"used as needed"| Service
+~~~
 
-The exporter resolves framework dependencies from the General Kit Catalog. Do not use a General working copy containing merged extension source as a new release checkout; downstream repositories are generated by the Dev publisher.
+See the [General MSV architecture guide](https://github.com/StarrDream/StellarFramework.Dev/blob/{{SOURCE_COMMIT}}/Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构说明文档-Guide.md). Export Profiles resolve Kit prerequisites.
 
-## Merge source into an existing Unity project
+## Kit guide
 
-For direct source use, check the General Profiles and UPM specifications in `RELEASE-MANIFEST.json` first. Confirm the project provides those General capabilities, merge this repository's `Assets` content while preserving `.meta` files, and install the listed UPM packages. Then follow the guide for each Kit. This approach adds the extension source tree; use the exporter above when only a few Kits are needed.
+| Use case | Kit | What it does | Guide |
+| --- | --- | --- | --- |
+| Algorithms and maps | GridKit | Grid data, geometry, occupancy, and topology | [Guide](Assets/StellarFramework/FrameworkDoc/02-Kits/GridKit/GridKit-网格系统-说明文档-Guide.md) |
+| Algorithms and maps | GridKit Unity Projection | Project grid data into Unity scenes and physics queries | [Guide](Assets/StellarFramework/FrameworkDoc/02-Kits/GridKitUnityProjection/GridKit-UnityProjectionAdapter-Guide.md) |
+| Algorithms and maps | SpatialKit | Spatial indexing and nearby-object queries | [Guide](Assets/StellarFramework/FrameworkDoc/02-Kits/SpatialKit/SpatialKit-空间索引-说明文档-Guide.md) |
+| Algorithms and maps | PathKit | Path search over graphs and grids | [Guide](Assets/StellarFramework/FrameworkDoc/02-Kits/PathKit/PathKit-路径搜索-说明文档-Guide.md) |
+| Algorithms and simulation | SimulationKit | Batched scheduling for many logical objects | [Guide](Assets/StellarFramework/FrameworkDoc/02-Kits/SimulationKit/SimulationKit-批量模拟调度-说明文档-Guide.md) |
+| Worlds and levels | WorldKit | World state, data layers, and chunk lifecycle | [Guide](Assets/StellarFramework/FrameworkDoc/02-Kits/WorldKit/WorldKit-世界组织系统-说明文档-Guide.md) |
+| Worlds and levels | WorldGenKit | Deterministic generation from rules and stages | [Guide](Assets/StellarFramework/FrameworkDoc/02-Kits/WorldGenKit/WorldGenKit-世界生成系统-说明文档-Guide.md) |
+| Worlds and levels | PlacementKit | Validate footprints, slope, water, and connections | [Guide](Assets/StellarFramework/FrameworkDoc/02-Kits/PlacementKit/PlacementKit-通用放置规则-Guide.md) |
+| Worlds and levels | WorldKit Streaming | Chunk loading, unloading, and streaming storage integration | [Guide](Assets/StellarFramework/FrameworkDoc/02-Kits/WorldKitStreaming/WorldKitStreaming-无限世界流送-Guide.md) |
+| Workflows | FlowKit | Flow graph data, execution, Unity integration, and visual tools | [Guide](Assets/StellarFramework/FrameworkDoc/02-Kits/FlowKit/FlowKit-工作流系统-说明文档-Guide.md) |
 
-## Extension areas
+## Release links
 
-| Area | Kits |
-| --- | --- |
-| Algorithms | GridKit, SpatialKit, SimulationKit, PathKit, and adapters |
-| World | WorldKit, WorldGenKit, PlacementKit, Streaming, and World Framework tools |
-| Flow | FlowKit Core, Unity integration, visual editor, and validation tools |
-
-Kit guides are under `Assets/StellarFramework/FrameworkDoc/02-Kits`; World Framework guides are under `Assets/StellarFramework/FrameworkDoc/06-WorldFramework`. `RELEASE-MANIFEST.json` records the Dev source commit, extension domains, required General Profiles, and UPM specifications for this release.
-
-Extension source and release rules are maintained in [StellarFramework.Dev](https://github.com/StarrDream/StellarFramework.Dev). Make source changes there.
+- [StellarFramework General Releases](https://github.com/StarrDream/StellarFramework/releases): download the matching General version first.
+- [StellarFramework.Dev](https://github.com/StarrDream/StellarFramework.Dev): extension source, Catalog, and release templates.
+- [RELEASE-MANIFEST.json](RELEASE-MANIFEST.json): extension scope, required General Profiles, and external dependencies.

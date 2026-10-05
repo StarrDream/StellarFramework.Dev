@@ -1,67 +1,79 @@
 # StellarFramework.Dev
 
-StellarFramework 的开发、验证和发布源仓。框架 Runtime、Editor 工具、Tools Hub、Kit Catalog、样例、测试及发布脚本都在这里维护。General 和 Extensions 使用者仓由本仓生成；不要在下游仓直接维护框架源码。
+StellarFramework 1.0.3 开发源仓
 
-当前发布版本：**1.0.3**。版本规则见 [VERSIONING.md](VERSIONING.md)。
+## 框架主体介绍
 
-## 开发环境
+本仓是 StellarFramework 的开发、验证和发布工程，维护 Runtime、Editor、Tools Hub、Kit Catalog、文档、案例及发布脚本。General 与 Extensions 两个使用者仓由本仓生成；框架源码和发布模板以本仓为准。
 
-- Unity Editor：**2022.3.62f3c1**
+在 Unity Hub 中打开工程，等待资源与依赖导入完成后，从菜单 **StellarFramework → Tools Hub** 进入编辑器工具。Tank Arena 是跨 Kit 案例。发布给项目使用时，可在 Export 中选择单个 Kit、组合 Profile 或资源后端，导出 unitypackage。
+
+## 环境要求
+
+- Unity Editor 2022.3.62f3c1（工程指定版本）
 - Python 3：运行仓库发布器和静态检查
-- Android 验证：Android SDK、ADB，以及可用的 Android 设备或模拟器
+- Unity Package Manager：首次打开时解析 Packages/manifest.json
+- Android SDK 与 ADB：仅执行 Android 构建和设备验证时需要
 
-在 Unity Hub 中添加本仓目录并打开工程。等待 Package Manager 完成解析和 Unity 导入后，从菜单 **StellarFramework → Tools Hub** 查看工程入口。
+## 框架概念
 
-## 目录结构
-
-| 路径 | 用途 |
+| 概念 | 作用 |
 | --- | --- |
-| `Assets/StellarFramework/Runtime/Kits` | Runtime Kit、Adapter 与公共接口 |
-| `Assets/StellarFramework/Editor` | Tools Hub、Kit 工具及发布器 |
-| `Assets/StellarFramework/KitCatalog` | Kit 依赖、导出和仓库归属配置 |
-| `Assets/StellarFramework/FrameworkDoc` | 面向使用者的 Kit 指南，以及面向维护者的架构和验证文档 |
-| `Assets/StellarFramework/Samples` | Tank Arena 框架示例 |
-| `Assets/StellarFramework/Tests` | EditMode、PlayMode 和架构策略测试 |
-| `Assets/StellarFrameworkVerification` | Player、热更新及发布验证门禁 |
-| `Tools/RepositoryPublisher` | 生成 General 与 Extensions 使用者仓 |
-| `Tools/AndroidVerification` | Android 构建与设备自动化 |
+| Runtime | 提供架构入口和运行时能力；项目按需选择功能 Kit |
+| Kit | 按职责组织的框架能力；Catalog 声明导出文件、依赖、外部包和成熟度 |
+| Adapter / Provider | 对接 Unity 或第三方后端；例如 ResKit 的 Addressables 加载适配器、YooAsset 内容更新 Provider、HybridCLR 代码更新 Provider |
+| Profile | 一组可导出的 Kit 与适配器配置，可单独选择或组合 |
+| Tools Hub | Unity Editor 内的配置、诊断、构建和导出入口，不进入游戏 Player |
 
-## 修改框架
+框架按 MSV 组织 Model、Service、View。资源加载、资源内容更新和代码更新由 ResKit 的可选实现提供，项目可以分别选择和组合。
 
-1. 先确认 Kit 的公开 API、依赖方向和 Runtime/Editor 边界。
-2. 实现功能并更新 `KitDistributionCatalog.json` 中的依赖、UPM 要求、导出路径和成熟度。
-3. 更新随包交付的 Kit 指南、Tools Hub 帮助和示例说明。
-4. 为依赖边界、导出闭包和运行行为补充测试。
-5. 按改动范围运行 Unity 编译、EditMode/PlayMode 测试和发布验证。验证入口见[验证架构](Assets/StellarFrameworkVerification/ValidationArchitecture.md)及[当前验证状态](Assets/StellarFramework/FrameworkDoc/08-Validation/ValidationCurrentStatus.md)。
+## 架构介绍
 
-ResKit、资源后端和热更新 Provider 的组合边界见[资源与代码更新扩展设计](Assets/StellarFramework/FrameworkDoc/01-Architecture/ResourceAndCodeUpdatePlugins.md)。Kit 的依赖分层和导出规则见[Kit 架构指南](Assets/StellarFramework/FrameworkDoc/01-Architecture/KitArchitectureGuide.md)。
+核心架构入口位于 `Assets/StellarFramework/Runtime/Core/Architecture/StellarFramework.cs`。`Architecture<T>` 管理 Model 与 Service 的注册、初始化、查询和销毁；View 通过只读架构契约读取状态并调用 Service。Service 负责应用操作并通过架构访问 Model。需要状态变更通知时，可以组合 BindableKit。
 
-General 发布通用能力，例如 `TimeKit` 和 `LocalizationKit`；Algorithms、World 与 Flow 能力（包括 `GridKit`、`SpatialKit`、`SimulationKit`、`PathKit`）位于 Extensions。具体归属由 Kit Catalog 管理。
+~~~mermaid
+flowchart LR
+    Startup["游戏启动"] -->|"Init / 生命周期"| Architecture["Architecture<T><br/>注册、查询、生命周期"]
+    Architecture -->|"注册 / 初始化"| Model["Model<br/>应用状态与数据"]
+    Architecture -->|"注册 / 初始化"| Service["Service<br/>应用操作与业务流程"]
+    View["View<br/>StellarView / Unity UI"] -->|"交互：调用"| Service
+    Service -->|"读取 / 更新"| Model
+    View -->|"只读查询"| Model
+    Model -. "可选：BindableKit 状态通知" .-> View
+~~~
 
-## 发布 General 与 Extensions
+[MSV 架构说明](Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构说明文档-Guide.md) · [架构源码文档](Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构源码文档-Guide.md)
 
-Dev 是三个仓库的唯一源码来源。先把准备发布的源代码、Catalog 和 README 提交到 Dev，再运行发布器；它会将当前 Dev 提交号写入下游的 `RELEASE-MANIFEST.json`。
+## Kit 介绍
 
-先检查发布计划：
+下表按使用场景概述主要 Kit。每个 Kit 的导出边界、依赖和成熟度以 Kit Catalog 为准；Algorithms、World、Flow 扩展见 [Extensions](https://github.com/StarrDream/StellarFramework.Extensions)。
 
-```powershell
-python Tools/RepositoryPublisher/publish_repositories.py --dry-run
-```
+| 适用场景 | Kit | 简介 | 文档 |
+| --- | --- | --- | --- |
+| 基础与流程 | LogKit | 分类日志与运行时诊断 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/LogKit/LogKit-PerformanceKit-说明文档-Guide.md) |
+| 基础与流程 | EventKit | 类型化事件发布与订阅 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/EventKit/EventKit-事件系统-说明文档-Guide.md) |
+| 基础与流程 | BindableKit | 可观察数据和变化通知 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/BindableKit/BindableKit-数据绑定-说明文档-Guide.md) |
+| 基础与流程 | ActionKit | 组合与执行可复用动作 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/ActionKit/ActionKit-动作系统-说明文档-Guide.md) |
+| 基础与流程 | FSMKit | 状态转换与状态机生命周期 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/FSMKit/FSMKit-状态机-说明文档-Guide.md) |
+| 基础与流程 | TimeKit | 统一时间和计时控制 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/TimeKit/TimeKit-时间系统-说明文档-Guide.md) |
+| 基础与流程 | PoolKit | 对象复用与分配管理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/PoolKit/PoolKit-对象池-说明文档-Guide.md) |
+| 基础与流程 | SingletonKit | 注册单例对象及其生命周期管理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SingletonKit/SingletonKit-单例系统-说明文档-Guide.md) |
+| 数据与配置 | ConfigKit | 项目配置加载和访问 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/ConfigKit/ConfigKit-配置系统-说明文档-Guide.md) |
+| 数据与配置 | SaveKit | 存档读写和序列化适配 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SaveKit/SaveKit-存档系统-说明文档-Guide.md) |
+| 数据与配置 | SettingsKit | 玩家设置与存储适配 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SettingsKit/SettingsKit-设置系统-说明文档-Guide.md) |
+| 资源与更新 | ResKit | 统一资源加载与释放入口 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/ResKit-统一资源-说明文档-Guide.md) |
+| 资源与更新 | Resources / AssetBundle / Addressables (AA) | 可选资源加载后端，可单独导出或组合 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/ResKit-统一资源-说明文档-Guide.md) |
+| 资源与更新 | YooAsset | 经 ResKit 加载资源；内容更新 Provider 管版本、下载和缓存 | [资源说明](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/ResKit-统一资源-说明文档-Guide.md) |
+| 资源与更新 | HybridCLR | ResKit 可选代码更新 Provider，负责加载和执行热更程序集 | [使用说明](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/CodeUpdate/HybridCLR/ResKit-CodeUpdate-HybridCLR-说明文档-Guide.md) |
+| UI 与表现 | UIKit | UI 面板生命周期及打开、关闭管理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/UIKit/UIKit-界面系统-说明文档-Guide.md) |
+| UI 与表现 | UIAdaptationKit | 安全区、屏幕规格和布局适配 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/UIAdaptationKit/UIAdaptationKit-说明文档-Guide.md) |
+| UI 与表现 | LocalizationKit | 语言数据、切换与 UGUI/TMP 本地化绑定 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/LocalizationKit/LocalizationKit-Guide.md) |
+| UI 与表现 | AudioKit | 音效、音乐播放及资源接入 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/AudioKit/AudioKit-音频系统-说明文档-Guide.md) |
+| 网络 | HttpKit | 异步 HTTP 请求与响应处理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/HttpKit/HttpKit-网络请求-说明文档-Guide.md) |
 
-确认 General 和 Extensions 目标路径正确，且目标仓没有需要保留的本地文件后，生成使用者仓：
+## 发布链接
 
-```powershell
-python Tools/RepositoryPublisher/publish_repositories.py `
-  --general-target C:\GitProject\StellarFramework `
-  --extensions-target C:\GitProject\StellarFramework.Extensions `
-  --validation PASS
-```
-
-发布器会重建两个目标目录中的发布内容，并保留各自的 `.git`。运行前请备份或提交目标仓里的本地改动。只有对应验证实际通过后，才将 `--validation` 设为 `PASS`。生成后检查文件差异、Kit Catalog、UPM 清单和两个 `RELEASE-MANIFEST.json`，然后分别提交 General 与 Extensions。
-
-## 发布仓定位
-
-- [StellarFramework](https://github.com/StarrDream/StellarFramework)：面向 Unity 项目使用者的通用框架仓。
-- [StellarFramework.Extensions](https://github.com/StarrDream/StellarFramework.Extensions)：面向已使用 General 的项目，提供 Algorithms、World 和 Flow 扩展 Kit。
-
-使用者文档位于 `Assets/StellarFramework/FrameworkDoc`；版本号必须按 [VERSIONING.md](VERSIONING.md) 在三个仓库中保持一致。
+- [StellarFramework 使用者仓](https://github.com/StarrDream/StellarFramework)：通用框架、Tank Arena 案例与 Kit 导出工程。
+- [StellarFramework.Extensions 使用者仓](https://github.com/StarrDream/StellarFramework.Extensions)：Algorithms、World、Flow 扩展 Kit。
+- [版本策略](VERSIONING.md)：版本号规则及三仓同步要求。
+- [仓库发布器说明](Tools/RepositoryPublisher/README.md)：从 Dev 生成两个使用者仓。
