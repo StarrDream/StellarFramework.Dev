@@ -1,6 +1,7 @@
 # Track only Unity project source/config folders.
 /*
 !/.gitignore
+!/AGENTS.md
 !/README_EN.md
 !/VERSIONING.md
 
@@ -18,6 +19,12 @@ __pycache__/
 
 !/.github/
 !/.github/**
+
+# Portable Codex skills for projects consuming StellarFramework.
+!/.agents/
+!/.agents/skills/
+!/.agents/skills/stellarframework-unity/
+!/.agents/skills/stellarframework-unity/**
 
 # Project-local verification automation is source-controlled; generated run artifacts are not.
 !/Tools/

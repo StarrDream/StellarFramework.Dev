@@ -70,21 +70,30 @@ public sealed class GameApp : Architecture<GameApp>
 ### 2. 定义 Model
 
 ```csharp
-public sealed class PlayerModel : AbstractModel
+public interface IReadOnlyPlayerModel : IReadOnlyModel
 {
-    public readonly BindableProperty<int> Hp = new BindableProperty<int>(100);
+    int Hp { get; }
+}
+
+public sealed class PlayerModel : AbstractModel, IReadOnlyPlayerModel
+{
+    public int Hp { get; set; } = 100;
+
+    int IReadOnlyPlayerModel.Hp => Hp;
 }
 ```
 
 ### 3. 定义 Service
 
 ```csharp
+using UnityEngine;
+
 public sealed class PlayerService : AbstractService
 {
     public void TakeDamage(int damage)
     {
         PlayerModel model = GetModel<PlayerModel>();
-        model.Hp.Value = Mathf.Max(0, model.Hp.Value - damage);
+        model.Hp = Mathf.Max(0, model.Hp - damage);
     }
 }
 ```
@@ -98,19 +107,25 @@ public sealed class PlayerHudView : StellarView
 
     public override void OnBind()
     {
-        this.GetReadOnlyModel<IPlayerReadOnlyModel>()
-            ?.RegisterWithInitValue(OnHpChanged)
-            .UnRegisterWhenGameObjectDestroyed(gameObject);
+        RefreshHp();
     }
 
     public void OnClickDamage()
     {
         this.GetService<PlayerService>()?.TakeDamage(10);
+        RefreshHp();
     }
 
-    private void OnHpChanged(int hp)
+    private void RefreshHp()
     {
+        IReadOnlyPlayerModel model = this.GetReadOnlyModel<IReadOnlyPlayerModel>();
+        if (model != null)
+        {
+            UpdateHp(model.Hp);
+        }
     }
+
+    private void UpdateHp(int hp) { }
 
     public override void OnUnbind()
     {
@@ -171,7 +186,7 @@ public sealed class PlayerHudView : StellarView
 ## 常见问题
 
 - `GetModel` / `GetService` 返回空
-  通常是没 `Init()`、没注册，或架构已经销毁。
+  Service 通常是没 `Init()`、没注册，或架构已经销毁；View 使用 `GetReadOnlyModel` 查询只读契约。
 - View 生命周期里重复监听
   需要把监听绑定到 `OnBind / OnUnbind` 或生命周期解绑接口。
 - 想给 View 暴露只读状态

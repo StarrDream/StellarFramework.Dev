@@ -70,7 +70,7 @@ Architecture<T>
 
 1. `StellarView.Start()` 被 Unity 调用
 2. 若当前未绑定，则执行 `OnBind()`
-3. 视图通过扩展方法获取只读模型或服务
+3. 视图通过只读入口获取只读模型或服务
 4. `StellarView.OnDestroy()` 被 Unity 调用
 5. 若当前已绑定，则执行 `OnUnbind()`
 
@@ -120,7 +120,7 @@ Architecture<T>
 ### 依赖关系
 
 - 被 `Architecture<T>` 实现
-- 被 `AbstractModel`、`AbstractService`、旧式 `IView.GetModel()` 调用链使用
+- 被 `AbstractModel`、`AbstractService` 使用
 
 ## `IReadOnlyArchitecture`
 
@@ -216,17 +216,16 @@ Architecture<T>
 
 - 视图不应直接持有可变 `IArchitecture`
 - 视图读取数据优先通过 `GetReadOnlyModel<T>()`
+- View 不提供获取可变 Model 的 `GetModel<T>()` 扩展入口
 
 ## `StellarArchitectureExtensions`
 
 ### 作用
 
-提供面向 `IView` 的快捷扩展方法。
+提供面向 `IView` 的只读模型与服务查询扩展方法。
 
 ### 方法
 
-- `GetModel<T>(this IView view)`
-  旧式可变模型访问入口，已标记 `[Obsolete]`。
 - `GetReadOnlyModel<T>(this IView view)`
   读取只读模型。
 - `GetService<T>(this IView view)`
@@ -234,15 +233,15 @@ Architecture<T>
 
 ### 失败路径
 
-以下情况会返回 `null` 并输出错误日志：
+以下情况会返回 `null`，并通过 `UnityEngine.Debug` 输出错误日志：
 
 - `view == null`
 - `view.Architecture == null`
-- 视图请求可变模型，但当前只暴露只读架构
+- 请求的只读模型契约或服务未注册
 
 ### 设计意图
 
-把常见的空检查、架构存在性检查、错误日志统一收口到扩展层，减少视图代码重复判断。
+把常见的空检查、架构存在性检查和错误日志统一收口到扩展层，减少视图代码重复判断。架构源码使用 Unity 日志 API，不依赖框架 Kit。
 
 ## `Architecture<T>`
 
@@ -443,7 +442,7 @@ public sealed class GameApp : Architecture<GameApp>
 
 ### 失败分支
 
-当 `Architecture == null` 时，辅助方法会返回 `null` 并记录错误日志。
+当 `Architecture == null` 时，辅助方法会返回 `null` 并通过 `UnityEngine.Debug` 记录错误。
 
 ## `StellarView`
 
@@ -568,8 +567,8 @@ Architecture<T>
   验证 `Architecture / Model / Service / View / UI` 的基础协作链路
 - `Samples`
   验证模块在架构容器中的接线方式
-- 依赖架构的各 Kit 测试
-  间接覆盖生命周期、查询和绑定调用链
+- 使用架构的集成验证
+  间接覆盖生命周期、查询和模块协作
 
 如果后续补充专项测试，建议至少覆盖：
 

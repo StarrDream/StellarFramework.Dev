@@ -29,7 +29,7 @@ StellarFramework 1.0.3 开发源仓
 
 ## 架构介绍
 
-核心架构入口位于 `Assets/StellarFramework/Runtime/Core/Architecture/StellarFramework.cs`。`Architecture<T>` 管理 Model 与 Service 的注册、初始化、查询和销毁；View 通过只读架构契约读取状态并调用 Service。Service 负责应用操作并通过架构访问 Model。需要状态变更通知时，可以组合 BindableKit。
+核心架构入口位于 `Assets/StellarFramework/Runtime/Core/Architecture/StellarFramework.cs`。`Architecture<T>` 管理 Model 与 Service 的注册、初始化、查询和销毁；View 通过只读架构契约读取状态并调用 Service，Service 负责应用操作并更新 Model。架构只定义模块职责和访问边界，不规定状态通知实现。
 
 ~~~mermaid
 flowchart LR
@@ -39,7 +39,6 @@ flowchart LR
     View["View<br/>StellarView / Unity UI"] -->|"交互：调用"| Service
     Service -->|"读取 / 更新"| Model
     View -->|"只读查询"| Model
-    Model -. "可选：BindableKit 状态通知" .-> View
 ~~~
 
 [MSV 架构说明](Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构说明文档-Guide.md) · [架构源码文档](Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构源码文档-Guide.md)

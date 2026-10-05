@@ -4,12 +4,12 @@
 
 ## 2026-10-05 ResKit 热更新 Provider 架构
 
-- 按用户决定，本轮架构整理继续留在 `main`，框架版本维持 `1.0.1`，不递增版本号。Dev、General、Extensions 的版本字样在准备下一次正式发布时再统一同步。
+- 按用户决定，本轮架构整理继续留在 `main`；Dev、General、Extensions 共用的框架发布版本为 `1.0.3`，本轮不调整发布版本。
 - 热更新运行时按 ResKit 能力拆分：资源加载由 Loader/`ResScope` 提供，内容版本与下载由 `IResContentUpdateProvider` 提供，代码加载由 `IResCodeUpdateProvider` 提供。项目启动层负责按顺序组合。
 - 默认组合为 `ResKit.YooAsset`（内容更新与资源 Loader）+ `ResKit.CodeUpdate.HybridCLR`（代码载荷读取、校验和程序集入口）。两项是可独立导出的 ResKit 扩展；ResKit.Core 不引用 YooAsset 或 HybridCLR。
 - 独立的 HybridCLRKit 类型转发程序集、静态兼容入口和“自行创建资源 Scope”的隐式 Runner 已移除。HybridCLR API 位于 `StellarFramework.Res.CodeUpdate.HybridCLR` 命名空间，外部调用入口是 ResKit Provider。
 - `HotUpdate Publisher` 的 Development 环境默认发布到项目本地 `BuildArtifacts/HotUpdate/Local`，同一台 Windows 电脑通过 `file:///` 地址直接读取；Android 设备无法访问开发机的 Windows 路径，需要可达的 HTTP 地址。Staging/Production 需要显式配置 HTTP(S) 地址，Production 强制 HTTPS。本地文件模式适合首次试跑，不验证 HTTP Range。
-- 本轮应用版本保持 `1.0.1`；热更内容包版本 `1.0.2` 是独立的内容版本，不代表应用版本升级。Unity `2022.3.62f3c1` 的 `StellarFramework.Tests.FrameworkValidation` EditMode 回归 **695/695 PASS**，0 failed / 0 skipped。
+- 本轮验证 Demo 使用的应用包版本标签为 `1.0.1`，热更内容包版本为 `1.0.2`；两者是 Player 与热更链路中的独立版本，不代表框架发布版本。Unity `2022.3.62f3c1` 的 `StellarFramework.Tests.FrameworkValidation` EditMode 回归 **695/695 PASS**，0 failed / 0 skipped。
 - Android x86_64 IL2CPP Release APK `Builds/AndroidVerification/StellarFramework-HotUpdate-x86_64-release.apk` 已重新构建，MuMu 12（Android 12 / API 32，`127.0.0.1:7555`，720x1280）实测冷启动和强制停止后的缓存重启均 **PASS**。冷启动下载 6 个文件 / 1,934,926 字节，Manifest、DLL SHA256、4 项 AOT metadata 和热更入口均通过；重启命中 15 个缓存文件，下载 0 字节。完整门禁记录：`Tools/AndroidVerification/Results/20261005-055401/pipeline-result.json`、`result.json`。测试内容由本机临时 HTTP 服务经 `adb reverse` 提供，不是公网 CDN。
 - 同一 APK 在 MuMu 上手动完成 LocalizationKit **English → 中文 → English** 双向切换，标题、HUD、按钮和包版本标签均随语言更新；截图：`Tools/AndroidVerification/Results/20261005-055401/manual-mumu/tank-arena-en.png`、`tank-arena-zh.png`、`tank-arena-en-after-toggle.png`。UIAdaptationKit 启动日志为 **PASS**（720x1280、Portrait、安全区锚点有效）；该设备返回 `insets=False`，所以本次没有覆盖刘海/挖孔硬件布局。
 - Windows x64 IL2CPP Release Player `Builds/WindowsVerification/HotUpdate-v1.0.2-20261005-060246` 已构建并运行 **PASS**：YooAsset 内容更新、Manifest/DLL 校验、4 项 AOT metadata、HybridCLR 热更入口及 Range 中断续传均通过；续传从 262144 字节偏移继续。运行记录：该目录下 `Temp/StellarHotUpdateVerification/runtime-result.json`。Android 与 Windows 构建各 0 errors / 1 non-fatal warning。Android 验证设备是 MuMu 模拟器，不是物理真机；本轮没有真机结果。

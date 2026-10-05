@@ -31,7 +31,7 @@ The framework uses MSV to organize Model, Service, and View. Resource loading, c
 
 ## Architecture
 
-The core architecture entry point is `Assets/StellarFramework/Runtime/Core/Architecture/StellarFramework.cs`. `Architecture<T>` registers Models and Services and manages their initialization, lookup, and disposal. A View reads state through the read-only architecture contract and calls a Service. A Service performs application operations and accesses Models through the architecture. BindableKit can be added for state notifications.
+The core architecture entry point is `Assets/StellarFramework/Runtime/Core/Architecture/StellarFramework.cs`. `Architecture<T>` registers Models and Services and manages their initialization, lookup, and disposal. A View reads state through the read-only architecture contract and calls a Service. A Service performs application operations and updates Models. The architecture defines module responsibilities and access boundaries.
 
 ~~~mermaid
 flowchart LR
@@ -41,7 +41,6 @@ flowchart LR
     View["View<br/>StellarView / Unity UI"] -->|"interaction: call"| Service
     Service -->|"read / update"| Model
     View -->|"read-only query"| Model
-    Model -. "optional: BindableKit state notification" .-> View
 ~~~
 
 [MSV architecture guide](Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构说明文档-Guide.md) · [architecture source guide](Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构源码文档-Guide.md)

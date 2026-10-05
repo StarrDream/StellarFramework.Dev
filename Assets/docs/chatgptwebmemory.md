@@ -187,7 +187,7 @@ StellarFramework is a reusable modular Unity framework, not a game project. Busi
 - Service owns business/system logic and may mutate Models.
 - View is presentation/interaction and should consume Models through read-only contracts.
 - `IReadOnlyArchitecture` exposes `GetReadOnlyModel<T>()` and Services to Views.
-- Legacy View `GetModel<T>()` exists but is obsolete.
+- View no longer has a `GetModel<T>()` extension; it uses `GetReadOnlyModel<T>()`. Mutable Model lookup remains available to Services.
 - Architecture lifecycle is explicit: Uninitialized → Initializing → Initialized → Disposing → Disposed.
 - Model/Service registration is not allowed as arbitrary runtime mutation after initialization.
 - Dispose deinitializes Services then Models and clears the container/static instance.
