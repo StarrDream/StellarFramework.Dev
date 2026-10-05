@@ -48,32 +48,30 @@ flowchart LR
 
 下表按使用场景概述主要 Kit。每个 Kit 的导出边界、依赖和成熟度以 Kit Catalog 为准；Algorithms、World、Flow 扩展见 [Extensions](https://github.com/StarrDream/StellarFramework.Extensions)。
 
-| 适用场景 | Kit | 简介 | 文档 |
-| --- | --- | --- | --- |
-| 基础与流程 | LogKit | 分类日志与运行时诊断 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/LogKit/LogKit-PerformanceKit-说明文档-Guide.md) |
-| 基础与流程 | EventKit | 类型化事件发布与订阅 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/EventKit/EventKit-事件系统-说明文档-Guide.md) |
-| 基础与流程 | BindableKit | 可观察数据和变化通知 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/BindableKit/BindableKit-数据绑定-说明文档-Guide.md) |
-| 基础与流程 | ActionKit | 组合与执行可复用动作 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/ActionKit/ActionKit-动作系统-说明文档-Guide.md) |
-| 基础与流程 | FSMKit | 状态转换与状态机生命周期 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/FSMKit/FSMKit-状态机-说明文档-Guide.md) |
-| 基础与流程 | TimeKit | 统一时间和计时控制 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/TimeKit/TimeKit-时间系统-说明文档-Guide.md) |
-| 基础与流程 | PoolKit | 对象复用与分配管理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/PoolKit/PoolKit-对象池-说明文档-Guide.md) |
-| 基础与流程 | SingletonKit | 注册单例对象及其生命周期管理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SingletonKit/SingletonKit-单例系统-说明文档-Guide.md) |
-| 数据与配置 | ConfigKit | 项目配置加载和访问 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/ConfigKit/ConfigKit-配置系统-说明文档-Guide.md) |
-| 数据与配置 | SaveKit | 存档读写和序列化适配 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SaveKit/SaveKit-存档系统-说明文档-Guide.md) |
-| 数据与配置 | SettingsKit | 玩家设置与存储适配 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SettingsKit/SettingsKit-设置系统-说明文档-Guide.md) |
-| 资源与更新 | ResKit | 统一资源加载与释放入口 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/ResKit-统一资源-说明文档-Guide.md) |
-| 资源与更新 | Resources / AssetBundle / Addressables (AA) | 可选资源加载后端，可单独导出或组合 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/ResKit-统一资源-说明文档-Guide.md) |
-| 资源与更新 | YooAsset | 经 ResKit 加载资源；内容更新 Provider 管版本、下载和缓存 | [资源说明](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/ResKit-统一资源-说明文档-Guide.md) |
-| 资源与更新 | HybridCLR | ResKit 可选代码更新 Provider，负责加载和执行热更程序集 | [使用说明](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/CodeUpdate/HybridCLR/ResKit-CodeUpdate-HybridCLR-说明文档-Guide.md) |
-| UI 与表现 | UIKit | UI 面板生命周期及打开、关闭管理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/UIKit/UIKit-界面系统-说明文档-Guide.md) |
-| UI 与表现 | UIAdaptationKit | 安全区、屏幕规格和布局适配 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/UIAdaptationKit/UIAdaptationKit-说明文档-Guide.md) |
-| UI 与表现 | LocalizationKit | 语言数据、切换与 UGUI/TMP 本地化绑定 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/LocalizationKit/LocalizationKit-Guide.md) |
-| UI 与表现 | AudioKit | 音效、音乐播放及资源接入 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/AudioKit/AudioKit-音频系统-说明文档-Guide.md) |
-| 网络 | HttpKit | 异步 HTTP 请求与响应处理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/HttpKit/HttpKit-网络请求-说明文档-Guide.md) |
+| Kit | 简介 | 文档 |
+| --- | --- | --- |
+| LogKit | 分类日志与运行时诊断 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/LogKit/LogKit-PerformanceKit-说明文档-Guide.md) |
+| EventKit | 类型化事件发布与订阅 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/EventKit/EventKit-事件系统-说明文档-Guide.md) |
+| BindableKit | 可观察数据和变化通知 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/BindableKit/BindableKit-数据绑定-说明文档-Guide.md) |
+| ActionKit | 组合与执行可复用动作 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/ActionKit/ActionKit-动作系统-说明文档-Guide.md) |
+| FSMKit | 状态转换与状态机生命周期 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/FSMKit/FSMKit-状态机-说明文档-Guide.md) |
+| TimeKit | 统一时间和计时控制 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/TimeKit/TimeKit-时间系统-说明文档-Guide.md) |
+| PoolKit | 对象复用与分配管理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/PoolKit/PoolKit-对象池-说明文档-Guide.md) |
+| SingletonKit | 注册单例对象及其生命周期管理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SingletonKit/SingletonKit-单例系统-说明文档-Guide.md) |
+| ConfigKit | 项目配置加载和访问 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/ConfigKit/ConfigKit-配置系统-说明文档-Guide.md) |
+| SaveKit | 存档读写和序列化适配 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SaveKit/SaveKit-存档系统-说明文档-Guide.md) |
+| SettingsKit | 玩家设置与存储适配 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SettingsKit/SettingsKit-设置系统-说明文档-Guide.md) |
+| ResKit | 统一资源加载与释放入口 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/ResKit-统一资源-说明文档-Guide.md) |
+| Resources / AssetBundle / Addressables (AA) | 可选资源加载后端，可单独导出或组合 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/ResKit-统一资源-说明文档-Guide.md) |
+| YooAsset | 经 ResKit 加载资源；内容更新 Provider 管版本、下载和缓存 | [资源说明](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/ResKit-统一资源-说明文档-Guide.md) |
+| HybridCLR | ResKit 可选代码更新 Provider，负责加载和执行热更程序集 | [使用说明](Assets/StellarFramework/FrameworkDoc/02-Kits/Reskit/CodeUpdate/HybridCLR/ResKit-CodeUpdate-HybridCLR-说明文档-Guide.md) |
+| UIKit | UI 面板生命周期及打开、关闭管理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/UIKit/UIKit-界面系统-说明文档-Guide.md) |
+| UIAdaptationKit | 安全区、屏幕规格和布局适配 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/UIAdaptationKit/UIAdaptationKit-说明文档-Guide.md) |
+| LocalizationKit | 语言数据、切换与 UGUI/TMP 本地化绑定 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/LocalizationKit/LocalizationKit-Guide.md) |
+| AudioKit | 音效、音乐播放及资源接入 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/AudioKit/AudioKit-音频系统-说明文档-Guide.md) |
+| HttpKit | 异步 HTTP 请求与响应处理 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/HttpKit/HttpKit-网络请求-说明文档-Guide.md) |
 
 ## 发布链接
 
-- [StellarFramework 使用者仓](https://github.com/StarrDream/StellarFramework)：通用框架、Tank Arena 案例与 Kit 导出工程。
-- [StellarFramework.Extensions 使用者仓](https://github.com/StarrDream/StellarFramework.Extensions)：Algorithms、World、Flow 扩展 Kit。
-- [版本策略](VERSIONING.md)：版本号规则及三仓同步要求。
-- [仓库发布器说明](Tools/RepositoryPublisher/README.md)：从 Dev 生成两个使用者仓。
+- [StellarFramework 主仓](https://github.com/StarrDream/StellarFramework)：面向 Unity 项目使用者的框架与案例工程。
+- [StellarFramework.Extensions 拓展仓](https://github.com/StarrDream/StellarFramework.Extensions)：提供 Algorithms、World、Flow 扩展 Kit。

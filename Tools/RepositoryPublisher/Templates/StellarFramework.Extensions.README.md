@@ -54,21 +54,20 @@ flowchart LR
 
 ## Kit 介绍
 
-| 适用场景 | Kit | 简介 | 文档 |
-| --- | --- | --- | --- |
-| 算法与地图 | GridKit | 网格数据、几何、占用与拓扑 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/GridKit/GridKit-网格系统-说明文档-Guide.md) |
-| 算法与地图 | GridKit Unity Projection | 将网格映射到 Unity 场景与物理查询 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/GridKitUnityProjection/GridKit-UnityProjectionAdapter-Guide.md) |
-| 算法与地图 | SpatialKit | 空间索引与邻近对象查询 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SpatialKit/SpatialKit-空间索引-说明文档-Guide.md) |
-| 算法与地图 | PathKit | 图和网格上的路径搜索 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/PathKit/PathKit-路径搜索-说明文档-Guide.md) |
-| 算法与模拟 | SimulationKit | 大量逻辑对象的分批模拟调度 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SimulationKit/SimulationKit-批量模拟调度-说明文档-Guide.md) |
-| 世界与关卡 | WorldKit | 世界状态、数据层与区块生命周期 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/WorldKit/WorldKit-世界组织系统-说明文档-Guide.md) |
-| 世界与关卡 | WorldGenKit | 基于规则与阶段的确定性世界生成 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/WorldGenKit/WorldGenKit-世界生成系统-说明文档-Guide.md) |
-| 世界与关卡 | PlacementKit | 占地、坡度、水域和连接条件校验 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/PlacementKit/PlacementKit-通用放置规则-Guide.md) |
-| 世界与关卡 | WorldKit Streaming | 区块加载、卸载和流送存储接入 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/WorldKitStreaming/WorldKitStreaming-无限世界流送-Guide.md) |
-| 业务流程 | FlowKit | 流程图数据、执行、Unity 集成与可视化工具 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/FlowKit/FlowKit-工作流系统-说明文档-Guide.md) |
+| Kit | 简介 | 文档 |
+| --- | --- | --- |
+| GridKit | 网格数据、几何、占用与拓扑 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/GridKit/GridKit-网格系统-说明文档-Guide.md) |
+| GridKit Unity Projection | 将网格映射到 Unity 场景与物理查询 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/GridKitUnityProjection/GridKit-UnityProjectionAdapter-Guide.md) |
+| SpatialKit | 空间索引与邻近对象查询 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SpatialKit/SpatialKit-空间索引-说明文档-Guide.md) |
+| PathKit | 图和网格上的路径搜索 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/PathKit/PathKit-路径搜索-说明文档-Guide.md) |
+| SimulationKit | 大量逻辑对象的分批模拟调度 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/SimulationKit/SimulationKit-批量模拟调度-说明文档-Guide.md) |
+| WorldKit | 世界状态、数据层与区块生命周期 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/WorldKit/WorldKit-世界组织系统-说明文档-Guide.md) |
+| WorldGenKit | 基于规则与阶段的确定性世界生成 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/WorldGenKit/WorldGenKit-世界生成系统-说明文档-Guide.md) |
+| PlacementKit | 占地、坡度、水域和连接条件校验 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/PlacementKit/PlacementKit-通用放置规则-Guide.md) |
+| WorldKit Streaming | 区块加载、卸载和流送存储接入 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/WorldKitStreaming/WorldKitStreaming-无限世界流送-Guide.md) |
+| FlowKit | 流程图数据、执行、Unity 集成与可视化工具 | [文档](Assets/StellarFramework/FrameworkDoc/02-Kits/FlowKit/FlowKit-工作流系统-说明文档-Guide.md) |
 
 ## 发布链接
 
-- [StellarFramework General Releases](https://github.com/StarrDream/StellarFramework/releases)：先下载与本仓同版本的 General。
-- [StellarFramework.Dev](https://github.com/StarrDream/StellarFramework.Dev)：扩展源码、Catalog 和发布模板维护仓。
-- [RELEASE-MANIFEST.json](RELEASE-MANIFEST.json)：扩展范围、General 前置 Profile 和外部依赖。
+- [StellarFramework 主仓](https://github.com/StarrDream/StellarFramework)：提供扩展 Kit 所需的通用框架。
+- [StellarFramework.Dev 开发仓](https://github.com/StarrDream/StellarFramework.Dev)：扩展源码与发布工程。
