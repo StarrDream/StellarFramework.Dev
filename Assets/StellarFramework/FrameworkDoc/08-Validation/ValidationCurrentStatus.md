@@ -2,7 +2,17 @@
 
 > 这是面向维护者的“当前状态摘要”。历史阶段证据、Benchmark 明细与旧 Profile 数量保留在 `KitExportValidationMatrix.md`，不要把历史数字继续堆到本页。
 
-## 2026-10-05 ResKit 热更新 Provider 架构
+## 2026-10-14 消费者导入、导出与资源构建
+
+- 三仓发布版本为 `1.0.4`，架构保持 MSV。
+- 修复 General 的 YooAsset / Addressables 编辑器 NUnit 依赖，并保证 Kit 安装器先安装此前置依赖；清理维护者测试 DLL 和过期热更 DLL。
+- 按需导出窗口统一功能选择、自动依赖与保存位置，编辑器工具和文档可以分别选择；新增可独立导出的 `reskit.yooasset.tools`。
+- YooAsset 资源构建页面与热更发布器共用构建实现。独立安装工程实测 Windows 资源 `1.0.0`、`1.0.1` 构建与 Bundle 加载通过，不依赖 HybridCLR，不覆盖旧版本或修改采集配置、StreamingAssets。
+- 完整 EditMode 回归 **766/766 PASS**；HttpKit 账号、认证请求头与图片共享/缓存边界 PlayMode **6/6 PASS**；安装包矩阵 **86/86 PASS**；仓库发布器 Python 测试 **11/11 PASS**。
+- 本轮未重新执行 Android/Windows Player 或 IL2CPP 热更门禁。另一台电脑的 `com.unity.test-framework` 下载/包源问题尚未在该电脑复测；提供了项目包解析诊断与锁文件修复脚本。
+- 详细记录见 [消费者导入验证](../../../StellarFrameworkVerification/ConsumerImport-20261014.md)。
+
+## 2026-10-05 ResKit 热更新 Provider 架构（历史）
 
 - 按用户决定，本轮架构整理继续留在 `main`；Dev、General、Extensions 共用的框架发布版本为 `1.0.3`，本轮不调整发布版本。
 - 热更新运行时按 ResKit 能力拆分：资源加载由 Loader/`ResScope` 提供，内容版本与下载由 `IResContentUpdateProvider` 提供，代码加载由 `IResCodeUpdateProvider` 提供。项目启动层负责按顺序组合。

@@ -1,6 +1,6 @@
 # StellarFramework.Dev
 
-StellarFramework 1.0.3 开发源仓
+StellarFramework 1.0.4 开发源仓
 
 ## 框架主体介绍
 

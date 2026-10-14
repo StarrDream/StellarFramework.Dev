@@ -6,14 +6,26 @@
     "StellarFramework.FlowKit.Core",
     "StellarFramework.FlowKit.Unity"
   ],
-  "includePlatforms": ["Editor"],
+  "includePlatforms": [
+    "Editor"
+  ],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": false,
   "precompiledReferences": [],
   "autoReferenced": false,
-  "defineConstraints": [],
-  "versionDefines": [],
+  "defineConstraints": [
+    "STELLARFRAMEWORK_TEST_FRAMEWORK"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.unity.test-framework",
+      "expression": "1.1.0",
+      "define": "STELLARFRAMEWORK_TEST_FRAMEWORK"
+    }
+  ],
   "noEngineReferences": false,
-  "optionalUnityReferences": ["TestAssemblies"]
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
 }

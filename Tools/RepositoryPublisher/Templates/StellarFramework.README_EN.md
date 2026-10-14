@@ -12,8 +12,6 @@ Open the repository in Unity Hub and wait for imports to finish. Run Tank Arena,
 
 Sample scene: `Assets/StellarFramework/Samples/TankArena/Scene/FrameworkDemo.unity`. Scripts, prefabs, and art assets are included in the Sample. See the [Tank Arena case study](Assets/StellarFramework/Samples/TankArena/CaseStudy.md) for gameplay and Kit integration.
 
-Friend link: [QFramework](https://github.com/liangxiegame/QFramework)
-
 ## Requirements
 
 - Unity Editor 2022.3.62f3c1
@@ -34,7 +32,7 @@ ResKit provides the shared resource entry point. Resources, AssetBundle, Address
 
 ## Architecture
 
-`StellarFramework.cs` defines the MSV foundation. `Architecture<T>` registers Models and Services and manages initialization, lookup, and disposal. A View reads Models through the read-only architecture interface and sends interactions to a Service. Services perform application operations and access Models. BindableKit can be added for state notifications.
+`StellarFramework.cs` defines the MSV foundation. `Architecture<T>` registers Models and Services and manages initialization, lookup, and disposal. A View reads Models through the read-only architecture interface and sends interactions to a Service. Services perform application operations and access Models. The architecture defines module responsibilities and access boundaries.
 
 ~~~mermaid
 flowchart LR
@@ -44,7 +42,6 @@ flowchart LR
     View["View<br/>StellarView / Unity UI"] -->|"interaction: call"| Service
     Service -->|"read / update"| Model
     View -->|"read-only query"| Model
-    Model -. "optional: BindableKit state notification" .-> View
 ~~~
 
 Source: `Assets/StellarFramework/Runtime/Core/Architecture/StellarFramework.cs`. Read the [MSV architecture guide](https://github.com/StarrDream/StellarFramework.Dev/blob/{{SOURCE_COMMIT}}/Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构说明文档-Guide.md) or the [architecture source guide](https://github.com/StarrDream/StellarFramework.Dev/blob/{{SOURCE_COMMIT}}/Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构源码文档-Guide.md).
@@ -80,3 +77,7 @@ Choose Kits by task. Tools Hub exports an individual Kit, a Profile, or a combin
 
 - [StellarFramework.Extensions](https://github.com/StarrDream/StellarFramework.Extensions): extension Kits for Algorithms, World, and Flow.
 - [StellarFramework.Dev](https://github.com/StarrDream/StellarFramework.Dev): framework source, tools, and release project.
+
+## Friend link
+
+- [QFramework](https://github.com/liangxiegame/QFramework)

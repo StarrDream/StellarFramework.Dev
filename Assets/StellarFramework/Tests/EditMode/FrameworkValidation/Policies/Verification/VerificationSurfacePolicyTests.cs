@@ -21,7 +21,7 @@ namespace StellarFramework.Tests.FrameworkValidation
         public void ValidationArchitectureAndEvidenceLedgerAreLinked()
         {
             string architecture = ReadAssetText("Assets/StellarFrameworkVerification/ValidationArchitecture.md");
-            string rootReadme = ReadAssetText("README.md");
+            string verificationReadme = ReadAssetText("Assets/StellarFrameworkVerification/README.md");
             string testsGuide = ReadAssetText("Assets/StellarFramework/FrameworkDoc/08-Validation/Tests-说明文档-Guide.md");
             string matrix = ReadAssetText("Assets/StellarFramework/FrameworkDoc/08-Validation/KitExportValidationMatrix.md");
 
@@ -31,7 +31,7 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(architecture, Does.Contain("Framework Policy"));
             Assert.That(architecture, Does.Contain("Integration"));
             Assert.That(architecture, Does.Contain("Release"));
-            Assert.That(rootReadme, Does.Contain("ValidationArchitecture.md"));
+            Assert.That(verificationReadme, Does.Contain("ValidationArchitecture.md"));
             Assert.That(testsGuide, Does.Contain("ValidationArchitecture.md"));
             Assert.That(matrix, Does.Contain("Evidence Ledger"));
         }

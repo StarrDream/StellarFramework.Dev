@@ -534,29 +534,23 @@ namespace StellarFramework.Tests.FrameworkValidation
         }
 
         [Test]
-        public void ExporterUsesArchitectureTierGroupsWithoutChangingDependencyClosureEntryPoints()
+        public void ExporterUsesSharedSelectionWithoutChangingDependencyClosureEntryPoints()
         {
             string exporter = ReadAssetText(
                 "Assets/StellarFramework/Editor/StellarToolsHub/Modules/Packaging/StellarFrameworkPackageExportWindow.cs");
             string publisher = ReadAssetText(
                 "Assets/StellarFramework/Editor/StellarToolsHub/Modules/Packaging/StellarFrameworkPackagePublisher.cs");
 
-            Assert.That(exporter, Does.Contain("01  基础功能"));
-            Assert.That(exporter, Does.Contain("02  完整功能"));
-            Assert.That(exporter, Does.Contain("03  扩展功能"));
-            Assert.That(exporter, Does.Contain("GetBasicDeliveryProfiles"));
-            Assert.That(exporter, Does.Contain("GetAtomicExtensionProfiles"));
-            Assert.That(exporter, Does.Contain("deliveryGroup"));
+            Assert.That(exporter, Does.Contain("_selectedProfileIds"));
+            Assert.That(exporter, Does.Contain("PreviewExportSelection"));
+            Assert.That(exporter, Does.Contain("自动补齐的必需依赖"));
             Assert.That(exporter, Does.Contain("TwoPaneSplitView"));
             Assert.That(exporter, Does.Contain("ToolbarSearchField"));
-            Assert.That(exporter, Does.Contain("GetProfileBadge"));
             Assert.That(exporter, Does.Contain("MatchesSearch"));
-            Assert.That(exporter, Does.Contain("ExportKitPackageGroupInternal"));
+            Assert.That(exporter, Does.Contain("ExportKitPackageGroupToDirectoryInternal"));
             Assert.That(publisher, Does.Contain("CurrentDistributionCatalogSchemaVersion = 4"));
-            Assert.That(exporter, Does.Contain("GetMaturityLabel"));
             Assert.That(publisher, Does.Contain("ResolveRecommendedProfileMaturity"));
-            Assert.That(exporter, Does.Contain("推荐组合"));
-            Assert.That(exporter, Does.Contain("ResolveRecommendedProfileClosureIds"));
+            Assert.That(exporter, Does.Contain("快捷方案"));
             Assert.That(publisher, Does.Contain("ExportRecommendedProfileInternal"));
             Assert.That(publisher, Does.Contain("ValidateDistributionCatalog"));
             Assert.That(publisher, Does.Contain("Foundation Kit profile"));
@@ -602,12 +596,9 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(matrix, Does.Contain("| LocalizationKit.UnityUGUIAdapter |"));
             Assert.That(matrix, Does.Contain("| LocalizationKit.Tools |"));
             Assert.That(matrix, Does.Contain("| LocalizationKit.TMPAdapter |"));
-            Assert.That(readme, Does.Contain("`TimeKit`"));
-            Assert.That(readme, Does.Contain("`GridKit`"));
-            Assert.That(readme, Does.Contain("`SpatialKit`"));
-            Assert.That(readme, Does.Contain("`SimulationKit`"));
-            Assert.That(readme, Does.Contain("`PathKit`"));
-            Assert.That(readme, Does.Contain("KitArchitectureGuide.md"));
+            Assert.That(readme, Does.Contain("| TimeKit |"));
+            Assert.That(readme, Does.Contain("StellarFramework.Extensions"));
+            Assert.That(readme, Does.Contain("Architecture-MSV-架构说明文档-Guide.md"));
             Assert.That(readme, Does.Contain("LocalizationKit"));
         }
 

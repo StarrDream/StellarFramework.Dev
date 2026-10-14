@@ -41,6 +41,8 @@ Keep optional capabilities optional. In particular, UIKit, LocalizationKit, UIAd
 
 Before changing ToolsHub or package contents, determine whether the task targets a consumer project's installed tools or the Dev source project. Keep editor-only tools out of runtime assemblies and preserve the package export boundary.
 
+For resource-only YooAsset builds, use Tools Hub's `YooAsset 资源构建` page (`reskit.yooasset.tools`). It uses the existing collector configuration and the shared YooAsset build implementation, without requiring ResKit runtime or HybridCLR. Keep code compilation, AOT metadata, client baseline checks and uploading in the separate hot-update publisher workflow. See `FrameworkDoc/04-ToolsHub/ResKit/YooAssetResourceBuildGuide.md` for settings and output boundaries.
+
 ## ResKit and hot update boundaries
 
 Treat resource loading, resource-content updating, and code execution as separate capabilities:
@@ -56,6 +58,12 @@ Do not refer to the removed standalone `HybridCLRKit` as the current hot-update 
 For a hot-update change, inspect the exact provider, package/platform settings, manifest and payload format, and publisher configuration. A local `file:///` Development source is useful for Editor/Windows smoke tests; an Android device cannot read a developer PC's disk path. Use a device-reachable endpoint for Android. Local-file success does not prove HTTP Range/resume, CDN, TLS, or production deployment.
 
 See [ResKit and hot-update reference](references/reskit-hot-update.md) for the data flow and source-document map.
+
+## HttpKit account boundaries
+
+Use `HttpKit.SetAuthContext("account:" + accountId, token)` for login and account changes; it switches scope and credentials together and cancels the old session by default. Use `SetAuthToken` for a same-account token refresh. Requests from multiple accounts at once should use per-request `RequestConfig.requestScope` and explicit authentication headers rather than switching global state repeatedly.
+
+Request deduplication and image download/cache sharing include the scope and effective headers. Use `HttpKit.SendAsync` with `RequestConfig.preventDuplicate` to opt into HTTP duplicate prevention. HttpKit's base export supports HTTP, Texture2D and Sprite downloads without UGUI; select `httpkit.ugui` for Image/RawImage bindings. Inspect the current HttpKit guide before adapting cancellation or cache policy.
 
 ## Localization, UI, and asset work
 

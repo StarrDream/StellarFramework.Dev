@@ -68,7 +68,9 @@ namespace StellarFramework.Tests.FrameworkValidation
             Assert.That(AssetsMapGenerator.MayAffectGeneratedMap(
                 "Assets/HotUpdatePublisherConsumerE2E/Generated/Code/HotUpdate.dll.bytes"), Is.False);
             Assert.That(AssetsMapGenerator.MayAffectGeneratedMap(
-                "Assets/HotUpdatePublisherConsumerE2E/Content/HotUpdateBehavior.txt"), Is.True);
+                "Assets/HotUpdatePublisherConsumerE2E/Content/HotUpdateBehavior.txt"), Is.False);
+            Assert.That(AssetsMapGenerator.MayAffectGeneratedMap(
+                "Assets/Game/Content/Behavior.txt"), Is.True);
         }
 
         [Test]

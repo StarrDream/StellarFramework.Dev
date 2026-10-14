@@ -50,7 +50,7 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
             HotUpdateEnvironmentProfileValidationResult result = profile.Validate();
 
             Assert.That(result.IsValid, Is.False);
-            Assert.That(string.Join("\n", result.Errors), Does.Contain("must use HTTPS"));
+            Assert.That(string.Join("\n", result.Errors), Does.Contain("HTTPS"));
         }
 
         [TestCase("https://user:secret@cdn.example.com")]
@@ -77,7 +77,7 @@ namespace StellarFramework.Tests.Policies.HotUpdatePublisher
             HotUpdateEnvironmentProfileValidationResult result = profile.Validate();
 
             Assert.That(result.IsValid, Is.False);
-            Assert.That(string.Join("\n", result.Errors), Does.Contain("RemoteRoot"));
+            Assert.That(string.Join("\n", result.Errors), Does.Contain("服务器目录"));
         }
 
         [Test]

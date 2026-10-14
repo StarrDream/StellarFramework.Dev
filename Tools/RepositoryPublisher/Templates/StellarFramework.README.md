@@ -12,8 +12,6 @@ Dev 源码提交：[{{SOURCE_COMMIT}}](https://github.com/StarrDream/StellarFram
 
 案例场景：`Assets/StellarFramework/Samples/TankArena/Scene/FrameworkDemo.unity`。脚本、预制体和美术资源均随 Sample 提供；玩法与 Kit 协作见 [Tank Arena 案例说明](Assets/StellarFramework/Samples/TankArena/CaseStudy.md)。
 
-友情链接：[QFramework 开源框架](https://github.com/liangxiegame/QFramework)
-
 ## 环境要求
 
 - Unity Editor 2022.3.62f3c1
@@ -34,7 +32,7 @@ ResKit 提供统一资源入口。Resources、AssetBundle、Addressables (AA) �
 
 ## 架构介绍
 
-`StellarFramework.cs` 定义 MSV 基础架构。`Architecture<T>` 注册 Model 和 Service，管理初始化、查询与销毁；View 通过只读架构接口读取 Model，并把交互交给 Service。Service 承担应用操作并访问 Model。状态变更通知可按需组合 BindableKit。
+`StellarFramework.cs` 定义 MSV 基础架构。`Architecture<T>` 注册 Model 和 Service，管理初始化、查询与销毁；View 通过只读架构接口读取 Model，并把交互交给 Service。Service 承担应用操作并更新 Model。架构只定义模块职责和访问边界，不规定状态通知实现。
 
 ~~~mermaid
 flowchart LR
@@ -44,7 +42,6 @@ flowchart LR
     View["View<br/>StellarView / Unity UI"] -->|"交互：调用"| Service
     Service -->|"读取 / 更新"| Model
     View -->|"只读查询"| Model
-    Model -. "可选：BindableKit 状态通知" .-> View
 ~~~
 
 源码位于 `Assets/StellarFramework/Runtime/Core/Architecture/StellarFramework.cs`。阅读 [MSV 架构说明](https://github.com/StarrDream/StellarFramework.Dev/blob/{{SOURCE_COMMIT}}/Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构说明文档-Guide.md) 或 [架构源码文档](https://github.com/StarrDream/StellarFramework.Dev/blob/{{SOURCE_COMMIT}}/Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构源码文档-Guide.md)。
@@ -80,3 +77,7 @@ flowchart LR
 
 - [StellarFramework.Extensions 拓展仓](https://github.com/StarrDream/StellarFramework.Extensions)：Algorithms、World、Flow 扩展 Kit。
 - [StellarFramework.Dev 开发仓](https://github.com/StarrDream/StellarFramework.Dev)：框架源码、工具和发布工程。
+
+## 友情链接
+
+- [QFramework 开源框架](https://github.com/liangxiegame/QFramework)

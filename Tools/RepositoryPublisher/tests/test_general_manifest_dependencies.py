@@ -42,6 +42,10 @@ class GeneralManifestDependencyTests(unittest.TestCase):
         dependencies = self.manifest["dependencies"]
         self.assertNotIn("com.unity.test-framework", dependencies)
         self.assertEqual(
+            dependencies.get("com.unity.ext.nunit"), "1.0.6",
+            "Pinned YooAsset and Addressables Editor imports require NUnit without the framework Test Runner.",
+        )
+        self.assertEqual(
             dependencies.get("com.code-philosophy.hybridclr"),
             "https://github.com/focus-creative-games/hybridclr_unity.git#4feac30cb2e105992986c737f7f54992b8300e1a",
         )
@@ -54,6 +58,29 @@ class GeneralManifestDependencyTests(unittest.TestCase):
 
         self.assertNotIn("com.code-philosophy.hybridclr", dependencies)
         self.assertIn("com.cysharp.unitask", dependencies)
+
+    def test_asset_map_removes_unshipped_keys_and_empty_development_groups(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="stellar-map-projection-") as directory:
+            root = Path(directory)
+            path = root / "Assets/StellarFramework/Generated/AssetMap/AssetsMap.cs"
+            path.parent.mkdir(parents=True)
+            path.write_text('''namespace StellarFramework.Generated {
+    public static class AssetsMap {
+        public static class Tests {
+            public const string Fixture = "Assets/Tests/Fixture.prefab";
+        }
+        public static class Samples {
+            public const string Tank = "Assets/Samples/Tank.prefab";
+        }
+    }
+}
+''', encoding="utf-8")
+            PUBLISHER.trim_asset_map(root, ["Assets/Samples/Tank.prefab"])
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("Fixture", text)
+            self.assertNotIn("class Tests", text)
+            self.assertIn("class AssetsMap", text)
+            self.assertIn('"Assets/Samples/Tank.prefab"', text)
 
     def test_extensions_release_generates_english_readme_from_dev_template(self) -> None:
         release = PUBLISHER.load_json(PROJECT_ROOT / PUBLISHER.REPOSITORY_CATALOG)

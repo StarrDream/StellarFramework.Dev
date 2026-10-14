@@ -31,3 +31,8 @@ __pycache__/
 !/Tools/AndroidVerification/
 !/Tools/AndroidVerification/**
 /Tools/AndroidVerification/Results/
+!/Tools/DevelopmentEnvironment/
+!/Tools/DevelopmentEnvironment/**
+!/Tools/RepositoryPublisher/
+!/Tools/RepositoryPublisher/**
+__pycache__/

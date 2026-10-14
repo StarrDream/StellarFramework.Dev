@@ -1,6 +1,6 @@
 # StellarFramework.Dev
 
-Development source for StellarFramework 1.0.3.
+Development source for StellarFramework 1.0.4.
 
 ## Framework overview
 

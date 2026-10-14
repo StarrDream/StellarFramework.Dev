@@ -14,42 +14,6 @@ namespace StellarFramework.Generated
             public static class Code
             {
                 public const string HotUpdate_dll = "Assets/GameHotUpdate/Code/HotUpdate.dll.bytes";
-                public const string HybridCLR_Runtime_dll = "Assets/GameHotUpdate/Code/HybridCLR.Runtime.dll.bytes";
-                public const string MCPForUnity_Runtime_dll = "Assets/GameHotUpdate/Code/MCPForUnity.Runtime.dll.bytes";
-                public const string StellarFramework_ActionKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.ActionKit.dll.bytes";
-                public const string StellarFramework_AudioKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.AudioKit.dll.bytes";
-                public const string StellarFramework_BindableKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.BindableKit.dll.bytes";
-                public const string StellarFramework_ConfigKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.ConfigKit.dll.bytes";
-                public const string StellarFramework_EventKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.EventKit.dll.bytes";
-                public const string StellarFramework_FSMKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.FSMKit.dll.bytes";
-                public const string StellarFramework_Generated_AssetMap_dll = "Assets/GameHotUpdate/Code/StellarFramework.Generated.AssetMap.dll.bytes";
-                public const string StellarFramework_Generated_SingletonRegister_dll = "Assets/GameHotUpdate/Code/StellarFramework.Generated.SingletonRegister.dll.bytes";
-                public const string StellarFramework_HotUpdateKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.HotUpdateKit.dll.bytes";
-                public const string StellarFramework_HttpKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.HttpKit.dll.bytes";
-                public const string StellarFramework_LogKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.LogKit.dll.bytes";
-                public const string StellarFramework_PoolKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.PoolKit.dll.bytes";
-                public const string StellarFramework_ResKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.ResKit.dll.bytes";
-                public const string StellarFramework_Runtime_dll = "Assets/GameHotUpdate/Code/StellarFramework.Runtime.dll.bytes";
-                public const string StellarFramework_Samples_Runtime_dll = "Assets/GameHotUpdate/Code/StellarFramework.Samples.Runtime.dll.bytes";
-                public const string StellarFramework_SettingsKit_Adapters_dll = "Assets/GameHotUpdate/Code/StellarFramework.SettingsKit.Adapters.dll.bytes";
-                public const string StellarFramework_SettingsKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.SettingsKit.dll.bytes";
-                public const string StellarFramework_SingletonKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.SingletonKit.dll.bytes";
-                public const string StellarFramework_UIKit_dll = "Assets/GameHotUpdate/Code/StellarFramework.UIKit.dll.bytes";
-                public const string UniTask_Addressables_dll = "Assets/GameHotUpdate/Code/UniTask.Addressables.dll.bytes";
-                public const string UniTask_DOTween_dll = "Assets/GameHotUpdate/Code/UniTask.DOTween.dll.bytes";
-                public const string UniTask_Linq_dll = "Assets/GameHotUpdate/Code/UniTask.Linq.dll.bytes";
-                public const string UniTask_TextMeshPro_dll = "Assets/GameHotUpdate/Code/UniTask.TextMeshPro.dll.bytes";
-                public const string UniTask_dll = "Assets/GameHotUpdate/Code/UniTask.dll.bytes";
-                public const string Unity_Addressables_dll = "Assets/GameHotUpdate/Code/Unity.Addressables.dll.bytes";
-                public const string Unity_ResourceManager_dll = "Assets/GameHotUpdate/Code/Unity.ResourceManager.dll.bytes";
-                public const string Unity_ScriptableBuildPipeline_dll = "Assets/GameHotUpdate/Code/Unity.ScriptableBuildPipeline.dll.bytes";
-                public const string Unity_TextMeshPro_dll = "Assets/GameHotUpdate/Code/Unity.TextMeshPro.dll.bytes";
-                public const string Unity_Timeline_dll = "Assets/GameHotUpdate/Code/Unity.Timeline.dll.bytes";
-                public const string Unity_VisualScripting_Core_dll = "Assets/GameHotUpdate/Code/Unity.VisualScripting.Core.dll.bytes";
-                public const string Unity_VisualScripting_Flow_dll = "Assets/GameHotUpdate/Code/Unity.VisualScripting.Flow.dll.bytes";
-                public const string Unity_VisualScripting_State_dll = "Assets/GameHotUpdate/Code/Unity.VisualScripting.State.dll.bytes";
-                public const string UnityEngine_TestRunner_dll = "Assets/GameHotUpdate/Code/UnityEngine.TestRunner.dll.bytes";
-                public const string UnityEngine_UI_dll = "Assets/GameHotUpdate/Code/UnityEngine.UI.dll.bytes";
             }
 
             public static class Manifest
@@ -63,15 +27,6 @@ namespace StellarFramework.Generated
                 public const string System_dll = "Assets/GameHotUpdate/Metadata/System.dll.bytes";
                 public const string UnityEngine_CoreModule_dll = "Assets/GameHotUpdate/Metadata/UnityEngine.CoreModule.dll.bytes";
                 public const string mscorlib_dll = "Assets/GameHotUpdate/Metadata/mscorlib.dll.bytes";
-            }
-        }
-
-        public static class HotUpdatePublisherConsumerE2E
-        {
-
-            public static class Content
-            {
-                public const string HotUpdateBehavior = "Assets/HotUpdatePublisherConsumerE2E/Content/HotUpdateBehavior.txt";
             }
         }
 

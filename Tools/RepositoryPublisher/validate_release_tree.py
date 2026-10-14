@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Set, Tuple
@@ -161,6 +162,21 @@ def validate_general(root: Path, source_commit: str | None) -> dict:
     require(all(dependency_specs.get(package_id) == spec for package_id, spec in required_upm.items()),
             "General RELEASE-MANIFEST requiredUpm specs differ from Packages/manifest.json.")
     require("com.besty.unity-skills" not in dependencies, "UnitySkills leaked into General Packages manifest.")
+    require("com.unity.test-framework" not in dependencies,
+            "Framework Test Runner leaked into General Packages manifest.")
+    require(not packages.get("testables"), "Development testables leaked into General.")
+    for source in (root / "Assets").rglob("*.cs"):
+        text = source.read_text(encoding="utf-8-sig")
+        require(not re.search(r'^\s*using\s+(?:NUnit|UnityEngine\.TestTools|UnityEditor\.TestTools)\b',
+                              text, flags=re.MULTILINE),
+                f"Framework test code leaked into General: {source.relative_to(root)}")
+    for path in (root / "Assets").rglob("*.dll.bytes"):
+        require("TestRunner" not in path.name and "Tests" not in path.name and "nunit" not in path.name.lower(),
+                f"Test payload leaked into General: {path.relative_to(root)}")
+    asset_map = root / "Assets/StellarFramework/Generated/AssetMap/AssetsMap.cs"
+    if asset_map.exists():
+        for key in re.findall(r'public const string @?\w+ = "(Assets/[^"\r\n]+)";', asset_map.read_text(encoding="utf-8-sig")):
+            require((root / key).is_file(), f"Generated asset key points outside release content: {key}")
     for relative in (
         "Assets/StellarFramework/Runtime/Kits/Reskit/CodeUpdate/HybridCLR/StellarFramework.ResKit.CodeUpdate.HybridCLR.asmdef",
         "Assets/StellarFramework/Editor/StellarToolsHub/Modules/ResKit/CodeUpdate/HybridCLR",

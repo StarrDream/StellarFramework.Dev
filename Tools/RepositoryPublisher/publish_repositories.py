@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import posixpath
+import re
 import shutil
 import subprocess
 import sys
@@ -349,6 +350,27 @@ def copy_files(source_root: Path, target: Path, files: Sequence[str]) -> None:
         shutil.copy2(source, destination)
 
 
+def trim_asset_map(target: Path, files: Sequence[str]) -> None:
+    """Project generated Dev keys onto the assets actually shipped in this release."""
+    path = target / "Assets/StellarFramework/Generated/AssetMap/AssetsMap.cs"
+    if not path.exists():
+        return
+    shipped = set(files)
+    text = path.read_text(encoding="utf-8-sig")
+    text = re.sub(
+        r'^\s*public const string @?\w+ = "(Assets/[^"\r\n]+)";[^\r\n]*\r?\n',
+        lambda match: match.group(0) if match.group(1) in shipped else "",
+        text, flags=re.MULTILINE,
+    )
+    empty_class = r'\s*public static class (?!AssetsMap\b)@?\w+\s*\{\s*\}'
+    while True:
+        trimmed = re.sub(empty_class, "", text)
+        if trimmed == text:
+            break
+        text = trimmed
+    write_text(path, text)
+
+
 def required_upm_manifest(source_root: Path, base: dict, plan: ProductPlan) -> Dict[str, str]:
     profiles = {str(item["id"]): item for item in base["profiles"]}
     closure = resolve_dependency_closure(plan.profile_ids, profiles)
@@ -420,6 +442,7 @@ def write_product_files(
     files = collect_files(source_root, plan)
     clean_target(target)
     copy_files(source_root, target, files)
+    trim_asset_map(target, files)
 
     values = {
         "SOURCE_COMMIT": source_commit,
