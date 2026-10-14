@@ -37,7 +37,7 @@ Extensions 是源码仓，不是 UPM 包。导出 Profile 和前置依赖见 `RE
 
 ## 架构介绍
 
-MSV 架构由同版本 General 的 `StellarFramework.cs` 提供。Extensions 增加可选算法和系统能力，不替换架构容器，也不要求所有扩展 Kit 一起接入。
+MSV 架构由同版本 General 的 `StellarFramework.cs` 提供。Extensions 仓分发独立的可选模块，不改变 MSV 架构容器。
 
 ~~~mermaid
 flowchart LR
@@ -47,10 +47,9 @@ flowchart LR
     View["View<br/>StellarView / Unity UI"] -->|"调用"| Service
     Service -->|"读取 / 更新"| Model
     View -->|"只读查询"| Model
-    Extension["所选扩展 Kit<br/>Algorithms / World / Flow"] -->|"按需使用"| Service
 ~~~
 
-[General 的 MSV 架构说明](https://github.com/StarrDream/StellarFramework.Dev/blob/{{SOURCE_COMMIT}}/Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构说明文档-Guide.md)；扩展依赖由导出 Profile 自动解析。
+[General 的 MSV 架构说明](https://github.com/StarrDream/StellarFramework.Dev/blob/{{SOURCE_COMMIT}}/Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构说明文档-Guide.md)
 
 ## Kit 介绍
 

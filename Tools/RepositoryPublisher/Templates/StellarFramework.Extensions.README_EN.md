@@ -37,7 +37,7 @@ Preserve `.meta` files to retain Unity asset GUIDs and scene or prefab reference
 
 ## Architecture
 
-The MSV architecture comes from `StellarFramework.cs` in the matching General release. Extensions adds optional algorithms and systems; it does not replace the architecture container or require every extension Kit.
+The MSV architecture comes from `StellarFramework.cs` in the matching General release. This repository distributes optional modules separately; they do not change the core MSV container.
 
 ~~~mermaid
 flowchart LR
@@ -47,10 +47,9 @@ flowchart LR
     View["View<br/>StellarView / Unity UI"] -->|"calls"| Service
     Service -->|"reads / updates"| Model
     View -->|"read-only query"| Model
-    Extension["Selected Extensions Kits<br/>Algorithms / World / Flow"] -->|"used as needed"| Service
 ~~~
 
-See the [General MSV architecture guide](https://github.com/StarrDream/StellarFramework.Dev/blob/{{SOURCE_COMMIT}}/Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构说明文档-Guide.md). Export Profiles resolve Kit prerequisites.
+See the [General MSV architecture guide](https://github.com/StarrDream/StellarFramework.Dev/blob/{{SOURCE_COMMIT}}/Assets/StellarFramework/FrameworkDoc/01-Architecture/Architecture/Architecture-MSV-架构说明文档-Guide.md).
 
 ## Kit guide
 
