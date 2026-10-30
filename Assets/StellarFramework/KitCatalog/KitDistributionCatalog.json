@@ -2670,6 +2670,37 @@
       ]
     },
     {
+      "id": "reskit.resource.publisher.tools",
+      "displayName": "ResKit.ResourcePublisher.Tools",
+      "kind": "tooling",
+      "availability": "available",
+      "output": "StellarFramework-ResourcePublisher-Tools.unitypackage",
+      "sourcePaths": [
+        "Assets/StellarFramework/Editor/StellarToolsHub/Modules/ResourcePublisher"
+      ],
+      "requiredProfileIds": [
+        "toolshub.core"
+      ],
+      "requiredKits": [
+        "ToolsHub.Core"
+      ],
+      "requiredUpm": [],
+      "optionalCapabilities": [
+        "ResourceCdnConfiguration",
+        "ImmutableResourcePublishing",
+        "ResourceRemoteSha256Validation"
+      ],
+      "excludedCapabilities": [
+        "HybridCLR",
+        "CodeHotUpdate",
+        "PlayerRuntime"
+      ],
+      "maturity": "experimental",
+      "documentationPaths": [
+        "Assets/StellarFramework/FrameworkDoc/04-ToolsHub/ResKit/ResourcePublisherGuide.md"
+      ]
+    },
+    {
       "id": "reskit.codeupdate.hybridclr",
       "displayName": "ResKit.CodeUpdate.HybridCLR",
       "kind": "kit-with-dependencies",
